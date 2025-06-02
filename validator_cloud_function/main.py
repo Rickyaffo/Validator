@@ -11,19 +11,37 @@ openai.api_key = os.environ.get("OPEN_API_KEY")
 @functions_framework.cloud_event
 def process_pitch_deck(cloud_event):
     # Logica per l'evento Cloud Storage
-    if "data" not in cloud_event:
-        print("Errore: Nessun dato 'data' nell'evento CloudEvent.")
-        return {"status": "error", "message": "Missing 'data' in CloudEvent."}
+    print(cloud_event)
+     # Aggiungi questo per ispezionare il tipo di cloud_event
+    print(f"--- DEBUG: Tipo di cloud_event: {type(cloud_event)} ---")
 
-    data = cloud_event.data
+    # Controlla se 'data' è un attributo dell'oggetto o una chiave di dizionario
+    event_data = None
+    if isinstance(cloud_event, dict):
+        event_data = cloud_event.get("data")
+        print(f"--- DEBUG: cloud_event è un dict. event_data da .get('data'): {event_data is not None} ---")
+    elif hasattr(cloud_event, "data"):
+        event_data = cloud_event.data
+        print(f"--- DEBUG: cloud_event ha attributo .data. event_data: {event_data is not None} ---")
+    else:
+        print("Errore: cloud_event non è un dizionario e non ha l'attributo 'data'.")
+        return {"status": "error", "message": "CloudEvent is neither a dict nor has a 'data' attribute."}
+
+    if event_data is None:
+        print("Errore: Nessun dato 'data' valido nell'evento CloudEvent dopo la verifica.")
+        return {"status": "error", "message": "Missing 'data' in CloudEvent after checks."}
+
+    print(f"\n--- DEBUG: Contenuto di event_data (ex cloud_event.data) ---")
+    print(event_data)
+    print(f"--- FINE DEBUG event_data ---\n")
     
     # Assicurati che 'bucket' e 'name' siano presenti nell'evento
-    if "bucket" not in data or "name" not in data:
+    if "bucket" not in event_data or "name" not in event_data:
         print("Errore: Dati 'bucket' o 'name' mancanti nell'evento CloudEvent.")
         return {"status": "error", "message": "Missing 'bucket' or 'name' in CloudEvent data."}
 
-    bucket_name = data["bucket"]
-    file_name = data["name"]
+    bucket_name = event_data["bucket"]
+    file_name = event_data["name"]
     print(f"Triggered by file: gs://{bucket_name}/{file_name}")
 
     # --- Implementazione lettura PDF da GCS ---
@@ -180,7 +198,6 @@ def process_pitch_deck(cloud_event):
 
         raw_json_output = response.choices[0].message.content
         
-        # Debugging prints (lasciali per ora, utili per i test)
         print(f"\n--- DEBUG: Output RAW di GPT prima del parsing ---")
         print(f"Content-Type: {type(raw_json_output)}")
         print(f"Length: {len(raw_json_output)}")
