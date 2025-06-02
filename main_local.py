@@ -4,66 +4,75 @@ import io
 import PyPDF2
 import openai
 import os
-from google.cloud import storage # Importa la libreria di Google Cloud Storage
 
 openai.api_key = os.environ.get("OPEN_API_KEY")
 
 @functions_framework.cloud_event
 def process_pitch_deck(cloud_event):
-    # Logica per l'evento Cloud Storage
-    if "data" not in cloud_event:
-        print("Errore: Nessun dato 'data' nell'evento CloudEvent.")
-        return {"status": "error", "message": "Missing 'data' in CloudEvent."}
+    file_name = "simulated_MagnaEasyPitch.pdf"
 
-    data = cloud_event.data
+    if "data" in cloud_event:
+        data = cloud_event.data
+        bucket_name = data["bucket"]
+        file_name = data["name"]
+        print(f"Triggered by file: gs://{bucket_name}/{file_name}")
+        pass
+
+    simulated_pdf_text = """
+    MAGNA EASY: La tua app di organizzazione alimentare, "SENZA STRESS".
+
+    PROBLEMA:
+    - TEMPO: Tra lavoro e studio, il giorno vola e non ci rimane un minuto.
+    - GESTIONE CIBO: Scegliere cosa cucinare e ricordare cosa c'è in frigo diventa un peso.
+
+    SOLUZIONE:
+    - PLANNER AUTOMATICO: Pasti pianificati in base alle tua routine-esigenza senza sforzo.
+    - INVENTARIO VIRTUALE: Controllo della tua credenza.
+    - LISTA SPESA SMART: Supportata con AI, Generata in automatico.
+    - Alert dei pasti in scadenza.
+    - RICETTE PERSONALIZZATE: Adatta le tue esigenze e abitudini alimentari.
+    - ACQUISTO DIRETTO: Comparazione prezzi integrata.
+
+    VALIDAZIONE DEL MERCATO / POTENZIALE DI MERCATO:
+    - Crescita Mercato Food degli ultimi 10 anni: +69%.
+    - 75% usano app food e/o salute alimentare, di cui 40% programmano i pasti settimanali e provano nuove ricette.
+    - 20% Giovani lavoratori (25-40 anni) alla ricerca attiva di una soluzione per semplificare la gestione dei pasti.
+    - SOM (Mercato iniziale italiano): €10M.
+    - SAM (Segmento accessibile europeo): €2 Miliardi.
+    - TAM (Mercato totale del food service): €21,05 trilioni.
+
+    ANALISI COMPETITIVA: MagnaEasy si posiziona tra flessibilità e costo rispetto a Justeat, Hellofresh, Samsung food, Mr.cook, Meallime, Yuka, Nowase, To good to go.
+
+    BUSINESS MODEL:
+    - Freemium: Gratis con fee sulla spesa, Pubblicità mirata.
+    - Premium: 7,99€/mese o 69,99€/anno.
+    - Partnership GDO: Promozione prodotti a marchio.
+
+    ROADMAP (Costi e Ricavi):
+    - Costi Anno 1-3: Generali (9.6%), Sviluppo (22.6%), Marketing (67.0%).
+    - Ricavi Anno 1: 0€, Anno 2: circa 1.5M, Anno 3: circa 2.5M.
+    - Fase 1 (2025): MVP base + customer base.
+    - Fase 2 (2026): Sviluppo features, aumento customer base + aumento frequenza d'uso.
+    - Fase 3 (2027): Partnership supermercati + Ambassador.
+
+    IL NOSTRO TEAM:
+    - ELISA MAGNANI: Design Strategist & Co-Fondatore, Design CMF, Lamborghini.
+    - RICCARDO AFFOLTER: CTO & Co-Fondatore, Data Engineer, Credem (techstars).
+    - FABIO VIRGILIO: CMO & Co-Fondatore, Marketing Strategist.
+    - EMANUELE FERRARESI: Business Specialist & Co-Fondatore.
+    - MATTEO GRASSELLI: Commercial Director & Co-Fondatore.
+    """
     
-    # Assicurati che 'bucket' e 'name' siano presenti nell'evento
-    if "bucket" not in data or "name" not in data:
-        print("Errore: Dati 'bucket' o 'name' mancanti nell'evento CloudEvent.")
-        return {"status": "error", "message": "Missing 'bucket' or 'name' in CloudEvent data."}
-
-    bucket_name = data["bucket"]
-    file_name = data["name"]
-    print(f"Triggered by file: gs://{bucket_name}/{file_name}")
-
-    # --- Implementazione lettura PDF da GCS ---
-    extracted_text = ""
-    try:
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(bucket_name)
-        blob = bucket.blob(file_name)
-
-        # Scarica il contenuto del file in memoria
-        pdf_content = blob.download_as_bytes()
-        
-        # Usa io.BytesIO per trattare il contenuto come un file in memoria
-        pdf_file_object = io.BytesIO(pdf_content)
-        
-        pdf_reader = PyPDF2.PdfReader(pdf_file_object)
-        
-        # Estrai il testo da tutte le pagine
-        for page_num in range(len(pdf_reader.pages)):
-            page = pdf_reader.pages[page_num]
-            extracted_text += page.extract_text() + "\n" # Aggiungi un newline tra le pagine
-
-        # Pulizia base del testo estratto
-        extracted_text = extracted_text.replace('\n\n', '\n').strip()
-        print(f"Testo estratto (parziale): {extracted_text[:500]}...")
-
-    except Exception as e:
-        print(f"Errore durante la lettura o parsing del PDF da GCS: {e}")
-        return {"status": "error", "message": f"Error processing PDF from GCS: {e}"}
-    # --- Fine Implementazione lettura PDF da GCS ---
-
-
     max_text_length = 15000 
-    if len(extracted_text) > max_text_length:
-        extracted_text = extracted_text[:max_text_length] + "\n... [Testo troncato per limite di token]"
-    
-    # Il resto del tuo codice per la chiamata OpenAI e il parsing JSON rimane INVARIATO
-    # ... (tutto il codice dal prompt_template in giù, inclusi i messaggi e le chiamate OpenAI) ...
-    
-    # Assicurati che il tuo prompt_template sia quello corretto con le parentesi graffe escapate ({{...}})
+    if len(simulated_pdf_text) > max_text_length:
+        extracted_text = simulated_pdf_text[:max_text_length] + "\n... [Testo troncato per limite di token]"
+    else:
+        extracted_text = simulated_pdf_text
+
+    extracted_text = extracted_text.replace('\n\n', '\n').strip() 
+
+    print(f"Testo estratto (parziale): {extracted_text[:15000]}...")
+
     prompt_template = """
     Analizza il seguente testo estratto da un pitch deck e valuta attentamente le 7 dimensioni chiave: "Problema", "Target", "Soluzione", "Mercato", "MVP", "Team", "Expected Return".
 
@@ -180,9 +189,9 @@ def process_pitch_deck(cloud_event):
 
         raw_json_output = response.choices[0].message.content
         
-        # Debugging prints (lasciali per ora, utili per i test)
+        
         print(f"\n--- DEBUG: Output RAW di GPT prima del parsing ---")
-        print(f"Content-Type: {type(raw_json_output)}")
+        print(f"Content-Type: {type(raw_json_output)}") # Verifichiamo che sia una stringa
         print(f"Length: {len(raw_json_output)}")
         print(f"Raw Output:\n{raw_json_output}\n--- FINE DEBUG RAW OUTPUT ---\n")
 
@@ -196,7 +205,7 @@ def process_pitch_deck(cloud_event):
                 "extracted_data": extracted_data_from_ai,
                 "file_processed": file_name
             }
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError as e: 
             print(f"\n--- Errore nel parsing JSON da GPT ---")
             print(f"Dettagli errore JSONDecodeError: {e}")
             print(f"Output raw che ha causato l'errore: {raw_json_output}") 
