@@ -5,11 +5,12 @@ import PyPDF2
 import openai
 import os
 from google.cloud import storage
+from google.api_core.exceptions import NotFound # Importa l'eccezione specifica per "Not Found"
 
 # --- Inizializzazione OpenAI ---
 # Assicurati che OPENAI_API_KEY sia impostata come variabile d'ambiente nella tua Cloud Function.
 # In un ambiente di produzione, considera l'uso di Google Secret Manager per maggiore sicurezza.
-openai.api_key = os.environ.get("OPENAI_API_KEY")
+openai.api_key = os.environ.get("OPEN_API_KEY")
 
 # --- Definizione delle Variabili e Rubriche per l'Analisi ---
 # Queste rubriche saranno incorporate direttamente nel prompt per GPT.
@@ -29,7 +30,7 @@ RUBRICS = {
     },
     "Mercato": {
         "descrizione": "Quanto è grande l’opportunità?",
-        "criteri": "Quantifica in modo preciso la dimensione (TAM/SAM/SOM), il potenziale di crescita, il timing e l'attrattività economica del mercato di riferimento. Variabili valutate: dimensione economica, trend di crescita, saturazione competitiva, propensione del mercato ad adottare nuove soluzioni."
+        "criteri": "Quantifica in modo preciso la dimensione (TAM/SAM/SOM), il potenziale di crescita, il timing e l'attrattivita' economica del mercato di riferimento. Variabili valutate: dimensione economica, trend di crescita, saturazione competitiva, propensione del mercato ad adottare nuove soluzioni."
     },
     "MVP": {
         "descrizione": "La prova tangibile della tua promessa.",
@@ -41,7 +42,7 @@ RUBRICS = {
     },
     "Ritorno Atteso": {
         "descrizione": "Perché dovrebbero finanziarti?",
-        "criteri": "Stima numericamente l’attrattività finanziaria della startup dal punto di vista degli investitori professionali, utilizzando modelli predittivi rigorosi come IRR (Internal Rate of Return), moltiplicatori attesi e diluizione equity. Variabili valutate: IRR stimato, multipli di investimento, equity post-diluizione, comparabilità con benchmark di mercato, giustificazione oggettiva della valuation richiesta."
+        "criteri": "Stima numericamente l’attrattivita' finanziaria della startup dal punto di vista degli investitori professionali, utilizzando modelli predittivi rigorosi come IRR (Internal Rate of Return), moltiplicatori attesi e diluizione equity. Variabili valutate: IRR stimato, multipli di investimento, equity post-diluizione, comparabilità con benchmark di mercato, giustificazione oggettiva della valuation richiesta."
     }
 }
 
@@ -67,38 +68,38 @@ def process_pitch_deck(cloud_event):
     print(cloud_event)
     print(f"--- FINE DEBUG cloud_event ---\n")
 
-    # Determina il tipo di cloud_event e recupera i dati
-    event_data = None
-    if isinstance(cloud_event, dict):
-        event_data = cloud_event.get("data")
-        print(f"--- DEBUG: cloud_event è un dict. event_data da .get('data'): {event_data is not None} ---")
-    elif hasattr(cloud_event, "data"):
-        event_data = cloud_event.data
-        print(f"--- DEBUG: cloud_event ha attributo .data. event_data: {event_data is not None} ---")
-    else:
-        print("Errore: cloud_event non è un dizionario e non ha l'attributo 'data'.")
-        return {"status": "error", "message": "CloudEvent is neither a dict nor has a 'data' attribute."}
+    try: # Inizio del blocco try generale per catturare tutti gli errori
+        # Determina il tipo di cloud_event e recupera i dati
+        event_data = None
+        if isinstance(cloud_event, dict):
+            event_data = cloud_event.get("data")
+            print(f"--- DEBUG: cloud_event è un dict. event_data da .get('data'): {event_data is not None} ---")
+        elif hasattr(cloud_event, "data"):
+            event_data = cloud_event.data
+            print(f"--- DEBUG: cloud_event ha attributo .data. event_data: {event_data is not None} ---")
+        else:
+            print("Errore: cloud_event non è un dizionario e non ha l'attributo 'data'.")
+            return {"status": "error", "message": "CloudEvent is neither a dict nor has a 'data' attribute."}
 
-    if event_data is None:
-        print("Errore: Nessun dato 'data' valido nell'evento CloudEvent dopo la verifica.")
-        return {"status": "error", "message": "Missing 'data' in CloudEvent after checks."}
+        if event_data is None:
+            print("Errore: Nessun dato 'data' valido nell'evento CloudEvent dopo la verifica.")
+            return {"status": "error", "message": "Missing 'data' in CloudEvent after checks."}
 
-    # Log di debug per il contenuto di event_data
-    print(f"\n--- DEBUG: Contenuto di event_data (ex cloud_event.data) ---")
-    print(event_data)
-    print(f"--- FINE DEBUG event_data ---\n")
+        # Log di debug per il contenuto di event_data
+        print(f"\n--- DEBUG: Contenuto di event_data (ex cloud_event.data) ---")
+        print(event_data)
+        print(f"--- FINE DEBUG event_data ---\n")
 
-    # Verifica la presenza di 'bucket' e 'name' nei dati dell'evento
-    if "bucket" not in event_data or "name" not in event_data:
-        print("Errore: Dati 'bucket' o 'name' mancanti nell'evento CloudEvent.")
-        return {"status": "error", "message": "Missing 'bucket' or 'name' in CloudEvent data."}
+        # Verifica la presenza di 'bucket' e 'name' nei dati dell'evento
+        if "bucket" not in event_data or "name" not in event_data:
+            print("Errore: Dati 'bucket' o 'name' mancanti nell'evento CloudEvent.")
+            return {"status": "error", "message": "Missing 'bucket' or 'name' in CloudEvent data."}
 
-    bucket_name = event_data["bucket"]
-    file_name = event_data["name"]
-    print(f"Triggered by file: gs://{bucket_name}/{file_name}")
+        bucket_name = event_data["bucket"]
+        file_name = event_data["name"]
+        print(f"Triggered by file: gs://{bucket_name}/{file_name}")
 
-    # --- Estrazione Testo dal PDF ---
-    try:
+        # --- Estrazione Testo dal PDF ---
         storage_client = storage.Client()
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(file_name)
@@ -123,50 +124,46 @@ def process_pitch_deck(cloud_event):
         print(f"Testo estratto dal PDF (primi 500 caratteri): {all_text[:500]}...")
 
         # --- Chiamata API GPT-4o / GPT-4 per l'Analisi ---
-        try:
-            analysis_result = analyze_pitch_deck_with_gpt(all_text)
-            if analysis_result:
-                # Esegui i calcoli aggiuntivi sulla base dell'output di GPT
-                final_analysis = perform_additional_calculations(analysis_result)
+        analysis_result = analyze_pitch_deck_with_gpt(all_text)
+        if analysis_result:
+            # Esegui i calcoli aggiuntivi sulla base dell'output di GPT
+            final_analysis = perform_additional_calculations(analysis_result)
 
-                # Salva il risultato finale strutturato in un bucket di output
-                output_bucket_name = "validatr-pitch-decks-output" # Assicurati che questo bucket esista
-                output_blob_name = f"{file_name}.analysis_result.json"
-                output_bucket = storage_client.bucket(output_bucket_name)
-                output_blob = output_bucket.blob(output_blob_name)
+            # Salva il risultato finale strutturato in un bucket di output
+            output_bucket_name = "validatr-pitch-decks-output" # Assicurati che questo bucket esista
+            output_blob_name = f"{file_name}.analysis_result.json"
+            output_bucket = storage_client.bucket(output_bucket_name)
+            output_blob = output_bucket.blob(output_blob_name)
+            
+            try:
                 output_blob.upload_from_string(json.dumps(final_analysis, indent=2))
                 print(f"Analisi completa salvata in gs://{output_bucket_name}/{output_blob_name}")
-
-                # (Optional) Generazione del feedback_automatico finale con un'altra chiamata GPT
-                # Se abilitato, questa sarebbe una seconda chiamata API.
-                # feedback_text = generate_feedback_with_gpt(final_analysis)
-                # output_feedback_blob_name = f"{file_name}.feedback.txt"
-                # output_feedback_blob = output_bucket.blob(output_feedback_blob_name)
-                # output_feedback_blob.upload_from_string(feedback_text)
-                # print(f"Feedback automatico salvato in gs://{output_bucket_name}/{output_feedback_blob_name}")
-
                 return {"status": "success", "message": "PDF processed, analyzed by GPT, and results saved."}
-            else:
-                print("Errore: L'analisi GPT non ha prodotto risultati validi o parsabili.")
-                return {"status": "error", "message": "GPT analysis failed or returned invalid data."}
+            except NotFound as e: # Cattura l'eccezione NotFound specifica
+                print(f"ERRORE CRITICO: Il bucket di output '{output_bucket_name}' non esiste o la funzione non ha i permessi. Dettaglio: {e}")
+                print(f"Impossibile salvare il risultato per il file: {file_name}. L'analisi è stata completata ma il salvataggio è fallito.")
+                # Ritorna successo per evitare retry, ma logga l'errore
+                return {"status": "error", "message": f"Output bucket '{output_bucket_name}' not found or no permissions. Analysis completed but result not saved."}
 
-        except openai.APIError as e:
-            print(f"Errore API OpenAI: {e}")
-            return {"status": "error", "message": f"OpenAI API Error: {e}"}
-        except json.JSONDecodeError as e:
-            print(f"Errore nel parsing JSON della risposta GPT: {e}. Risposta GPT non valida.")
-            print(f"Risposta completa di GPT che ha causato l'errore:\n{e.doc}") # e.doc contiene il JSON non valido
-            return {"status": "error", "message": f"GPT response not valid JSON: {e}"}
-        except Exception as e:
-            print(f"Errore generico durante l'analisi o i calcoli post-GPT: {e}")
-            return {"status": "error", "message": f"Post-GPT processing error: {e}"}
+        else:
+            print("Errore: L'analisi GPT non ha prodotto risultati validi o parsabili.")
+            return {"status": "error", "message": "GPT analysis failed or returned invalid data."}
 
+    except openai.APIError as e:
+        print(f"Errore API OpenAI: {e}")
+        return {"status": "error", "message": f"OpenAI API Error: {e}"}
+    except json.JSONDecodeError as e:
+        print(f"Errore nel parsing JSON della risposta GPT: {e}. Risposta GPT non valida.")
+        print(f"Risposta completa di GPT che ha causato l'errore:\n{e.doc}")
+        return {"status": "error", "message": f"GPT response not valid JSON: {e}"}
     except PyPDF2.errors.PdfReadError as e:
         print(f"Errore nella lettura del PDF: {e}")
         return {"status": "error", "message": f"Failed to read PDF: {e}"}
-    except Exception as e:
-        print(f"Errore generico durante l'elaborazione del PDF: {e}")
-        return {"status": "error", "message": f"PDF processing error: {e}"}
+    except Exception as e: # Cattura qualsiasi altra eccezione non specificata
+        print(f"ERRORE GENERALE NON CATTURATO: {e}")
+        print(f"Si è verificato un errore inatteso durante l'elaborazione del file: {file_name}. L'esecuzione verrà terminata come successo per evitare retry.")
+        # Ritorna successo per evitare retry, ma logga l'errore
+        return {"status": "error", "message": f"An unexpected error occurred: {e}. Execution terminated successfully to prevent retries."}
 
 
 # --- Funzione per l'Analisi con GPT ---
@@ -238,7 +235,7 @@ Il formato JSON di output deve essere ESATTAMENTE come segue. Non includere alcu
   "coerenza_coppie": [
 """
     # Genera la struttura per le 21 coppie di coerenza nel JSON di output
-    for i, (var1, var2) in enumerate(COHERENCE_PAPPERS): # Errore qui, dovrebbe essere COHERENCE_PAIRS
+    for i, (var1, var2) in enumerate(COHERENCE_PAIRS):
         system_prompt_content += f"""    {{
       "coppia": "{var1} - {var2}",
       "punteggio": <int: 0-100>,
@@ -257,10 +254,10 @@ Testo del pitch deck da analizzare:
     ]
 
     response = openai.chat.completions.create(
-        model="gemini-2.0-flash", # Utilizzo gemini-2.0-flash come da istruzioni
+        model="gpt-4o",
         messages=messages,
         temperature=0.1, # Temperatura più bassa per risposte più deterministiche
-        max_tokens=2500, # Aumentato per contenere risposte dettagliate e JSON
+        max_tokens=3500, # Aumentato per contenere risposte dettagliate e JSON
         response_format={"type": "json_object"} # FORZA l'output JSON
     )
 
@@ -290,13 +287,13 @@ def perform_additional_calculations(gpt_analysis_data):
     # 2. Calcolo del Final_Score e Final_Adjusted_Score.
     # Definisci i pesi per ogni variabile. Questi sono esempi, personalizzali.
     weights = {
-        "Problema": 0.15,
-        "Target": 0.10,
-        "Soluzione": 0.15,
-        "Mercato": 0.15,
-        "MVP": 0.15,
-        "Team": 0.15,
-        "Ritorno Atteso": 0.15
+        "Problema": 0.13,
+        "Target": 0.13,
+        "Soluzione": 0.13,
+        "Mercato": 0.13,
+        "MVP": 0.13,
+        "Team": 0.13,
+        "Ritorno Atteso": 0.22
     }
 
     final_score = sum(variabili_valutate_dict.get(var, 0) * weights.get(var, 0) for var in weights)
@@ -347,10 +344,9 @@ def perform_additional_calculations(gpt_analysis_data):
 #         {"role": "user", "content": f"Genera un feedback per la seguente analisi di pitch deck:\n{json.dumps(final_analysis_data, indent=2)}"}
 #     ]
 #     response = openai.chat.completions.create(
-#         model="gemini-2.0-flash", # Puoi usare lo stesso modello o uno diverso
+#         model="gpt-4o", # Puoi usare lo stesso modello o uno diverso
 #         messages=feedback_prompt_messages,
 #         temperature=0.5,
 #         max_tokens=500
 #     )
 #     return response.choices[0].message.content
-
