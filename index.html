@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VALIDATR™ - Analisi Variabili Pitch Deck</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> <!-- Font Awesome for icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Slate & Teal -->
+    <!-- Application Structure Plan: A single-page dashboard centered around analyzing pitch deck variables. The layout consists of a top header with a title and a document selection dropdown. Below, a main content area uses a responsive grid to display scorecards for key metrics, a horizontal bar chart for variable scores, and detailed tables for scores and motivations. This structure allows users to quickly filter by document and then explore both summary insights and detailed textual explanations. -->
+    <!-- Visualization & Content Choices:
+        - Document Selector -> Dropdown (HTML/JS) -> Goal: Filter -> Allows selection of a single pitch deck for detailed analysis.
+        - Key Metrics -> Scorecards (HTML/JS) -> Goal: Summarize/Inform -> Provides quick, prominent display of overall scores and class.
+        - Variable Scores -> Horizontal Bar Chart (Chart.js) -> Goal: Compare/Inform -> Visually compares scores of different variables; interactive tooltips provide motivations.
+        - Variable Details (Scores & Motivations) -> HTML Table (JS dynamic update) -> Goal: Inform/Organize -> Presents precise scores and full motivational text in a readable format.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .container-padding {
+            padding-left: 1rem; /* px-4 */
+            padding-right: 1rem; /* px-4 */
+        }
+        @media (min-width: 640px) { /* sm */
+            .container-padding {
+                padding-left: 2rem; /* sm:px-8 */
+                padding-right: 2rem; /* sm:px-8 */
+            }
+        }
+        @media (min-width: 1024px) { /* lg */
+            .container-padding {
+                padding-left: 4rem; /* lg:px-16 */
+                padding-right: 4rem; /* lg:px-16 */
+            }
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 650px; /* Max width for readability on large screens */
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px; /* Base height */
+            max-height: 500px; /* Max height to prevent excessive vertical space */
+        }
+        @media (max-width: 640px) { /* Mobile specific adjustments */
+            .chart-container {
+                height: 300px;
+                max-height: 400px;
+            }
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1.5rem; /* p-6 */
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-lg */
+            border: 1px solid #e2e8f0; /* slate-200 */
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            vertical-align: top;
+            border-bottom: 1px solid #e2e8f0; /* slate-200 */
+        }
+        th {
+            background-color: #f1f5f9; /* slate-100 */
+            font-weight: 600;
+            color: #1e293b; /* slate-800 */
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 0.75rem;
+            z-index: 10;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #0d9488; /* Teal */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Card Score Styling */
+        .scorecard-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background-color: #f8fafc; /* slate-50 */
+            border-radius: 0.5rem; /* rounded-lg */
+            border: 1px solid #e2e8f0; /* slate-200 */
+            transition: background-color 0.3s ease-in-out; /* Smooth transition for background color */
+        }
+        .scorecard-value {
+            font-size: 2.25rem; /* text-4xl */
+            font-weight: 700; /* font-bold */
+            color: #1e293b; /* slate-900 */
+            margin-bottom: 0.5rem;
+        }
+        .scorecard-label {
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* font-medium */
+            color: #475569; /* slate-600 */
+            text-align: center;
+        }
+        .score-icon {
+            font-size: 2.5rem; /* text-5xl */
+            margin-bottom: 0.5rem;
+        }
+        /* Icon Colors */
+        .score-class-verde { color: #10b981; } /* emerald-500 */
+        .score-class-giallo { color: #f59e0b; } /* amber-500 */
+        .score-class-rosso { color: #ef4444; } /* red-500 */
+        .score-class-default { color: #64748b; } /* slate-500 */
+
+        /* Background Colors for Scorecards */
+        .bg-class-verde { background-color: #d1fae5; border-color: #10b981; } /* emerald-100, emerald-500 */
+        .bg-class-giallo { background-color: #fef3c7; border-color: #f59e0b; } /* amber-100, amber-500 */
+        .bg-class-rosso { background-color: #fee2e2; border-color: #ef4444; } /* red-100, red-500 */
+        .bg-class-default-scorecard { background-color: #f8fafc; border-color: #e2e8f0; } /* slate-50, slate-200 */
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-8">
+    <!-- Intestazione Principale -->
+    <header class="w-full container-padding mb-8">
+        <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+            <h1 class="text-3xl font-bold text-slate-900 mb-4 sm:mb-0">
+                Dashboard Analisi Variabili VALIDATR™
+            </h1>
+            <div class="flex items-center space-x-4">
+                <label for="documentSelector" class="text-slate-700 font-medium">Seleziona Pitch Deck:</label>
+                <select id="documentSelector" class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+                    <!-- Opzioni popolate da JS -->
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenuto Principale della Dashboard -->
+    <main class="w-full container-padding grid grid-cols-1 lg:grid-cols-2 gap-8 relative">
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner"></div>
+            <p class="ml-4 text-slate-700 text-lg">Caricamento dati...</p>
+        </div>
+
+        <!-- Nuova Sezione: Riepilogo Generale (Scorecard) -->
+        <section class="card lg:col-span-2 mb-8">
+            <h2 class="text-2xl font-semibold text-slate-800 mb-6">Riepilogo Generale del Pitch Deck</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="scorecard-item">
+                    <div id="finalAdjustedScoreIcon" class="score-icon fas fa-chart-line score-class-default"></div>
+                    <div id="finalAdjustedScoreValue" class="scorecard-value">--</div>
+                    <div class="scorecard-label">Score Finale Regolato</div>
+                </div>
+                <div class="scorecard-item">
+                    <div id="coherenceIndexIcon" class="score-icon fas fa-project-diagram score-class-default"></div>
+                    <div id="coherenceIndexValue" class="scorecard-value">--</div>
+                    <div class="scorecard-label">Indice di Coerenza</div>
+                </div>
+                <div id="pitchClassCard" class="scorecard-item"> <!-- Added ID here -->
+                    <div id="pitchClassIcon" class="score-icon fas fa-trophy score-class-default"></div>
+                    <div id="pitchClassValue" class="scorecard-value">--</div>
+                    <div class="scorecard-label">Classe Pitch</div>
+                </div>
+            </div>
+            <div id="noCoreMetricsData" class="hidden text-center text-slate-500 mt-4">Nessun dato di riepilogo disponibile per questo pitch.</div>
+        </section>
+
+        <!-- Sezione Grafico a Barre delle Variabili -->
+        <section class="card lg:col-span-1 flex flex-col">
+            <h2 class="text-2xl font-semibold text-slate-800 mb-4">Punteggi Variabili Valutate</h2>
+            <p class="text-slate-600 mb-6">
+                Questo grafico a barre mostra i punteggi (0-100) assegnati a ciascuna delle 7 variabili chiave del pitch deck selezionato. Punteggi più alti indicano una maggiore forza in quella specifica area. Passa il mouse sulle barre per leggere la motivazione del punteggio.
+            </p>
+            <div class="flex-grow flex items-center justify-center min-h-[300px]">
+                <div class="chart-container">
+                    <canvas id="variablesChart"></canvas>
+                </div>
+            </div>
+            <div id="noDataChart" class="hidden text-center text-slate-500 mt-4">Nessun dato disponibile per il grafico.</div>
+        </section>
+
+        <!-- Sezione Tabella Dettagliata Variabili -->
+        <section class="card lg:col-span-1 flex flex-col">
+            <h2 class="text-2xl font-semibold text-slate-800 mb-4">Dettaglio Variabili e Motivazioni</h2>
+            <p class="text-slate-600 mb-6">
+                Questa tabella fornisce i punteggi numerici e le motivazioni dettagliate per ogni variabile, offrendo una comprensione più approfondita dell'analisi.
+            </p>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[500px] bg-white rounded-lg overflow-hidden">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 rounded-tl-lg">Variabile</th>
+                            <th class="py-3 px-4">Punteggio</th>
+                            <th class="py-3 px-4 rounded-tr-lg">Motivazione</th>
+                        </tr>
+                    </thead>
+                    <tbody id="variablesTableBody">
+                        <!-- Righe popolate da JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="noDataTable" class="hidden text-center text-slate-500 mt-4">Nessun dato disponibile per la tabella.</div>
+        </section>
+
+        <!-- Nuova Sezione: Tabella Dettagliata Coerenza -->
+        <section class="card lg:col-span-2 mt-8">
+            <h2 class="text-2xl font-semibold text-slate-800 mb-4">Analisi Coerenza tra Variabili</h2>
+            <p class="text-slate-600 mb-6">
+                Questa tabella mostra i punteggi di coerenza (0-100) tra le diverse coppie di variabili e le relative motivazioni, evidenziando l'allineamento interno del pitch.
+            </p>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[600px] bg-white rounded-lg overflow-hidden">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 rounded-tl-lg">Coppia di Variabili</th>
+                            <th class="py-3 px-4">Punteggio</th>
+                            <th class="py-3 px-4 rounded-tr-lg">Motivazione</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coherenceTableBody">
+                        <!-- Righe popolate da JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="noCoherenceData" class="hidden text-center text-slate-500 mt-4">Nessun dato di coerenza disponibile per questo pitch.</div>
+        </section>
+    </main>
+
+    <!-- Script JavaScript -->
+    <script>
+        const documentSelector = document.getElementById('documentSelector');
+        const variablesTableBody = document.getElementById('variablesTableBody');
+        const variablesChartCanvas = document.getElementById('variablesChart');
+        const coherenceTableBody = document.getElementById('coherenceTableBody'); // New element
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const noDataChartDiv = document.getElementById('noDataChart');
+        const noDataTableDiv = document.getElementById('noDataTable');
+        const noCoreMetricsDataDiv = document.getElementById('noCoreMetricsData'); // New element
+        const noCoherenceDataDiv = document.getElementById('noCoherenceData'); // New element
+
+        // Scorecard elements
+        const finalAdjustedScoreValue = document.getElementById('finalAdjustedScoreValue');
+        const finalAdjustedScoreIcon = document.getElementById('finalAdjustedScoreIcon');
+        const coherenceIndexValue = document.getElementById('coherenceIndexValue');
+        const coherenceIndexIcon = document.getElementById('coherenceIndexIcon');
+        const pitchClassValue = document.getElementById('pitchClassValue');
+        const pitchClassIcon = document.getElementById('pitchClassIcon');
+        const pitchClassCard = document.getElementById('pitchClassCard'); // Get the card element
+
+        let variablesChart; // Variabile per tenere traccia dell'istanza del grafico
+        let loadedAllData = {}; // Oggetto per memorizzare i dati recuperati
+
+        // Funzione per avvolgere le etichette lunghe
+        function wrapLabel(label, maxCharPerLine) {
+            if (label.length <= maxCharPerLine) return label;
+            let wrappedLabel = [];
+            let words = label.split(' ');
+            let currentLine = '';
+            words.forEach((word, index) => {
+                if ((currentLine + word).length <= maxCharPerLine) {
+                    currentLine += (currentLine === '' ? '' : ' ') + word;
+                } else {
+                    wrappedLabel.push(currentLine);
+                    currentLine = word;
+                }
+                if (index === words.length - 1) {
+                    wrappedLabel.push(currentLine);
+                }
+            });
+            return wrappedLabel;
+        }
+
+        // Funzione per aggiornare il grafico e la tabella
+        function updateDashboard(selectedDocumentId) {
+            const documentData = loadedAllData[selectedDocumentId];
+
+            // Reset scorecard background classes
+            const scorecardClasses = ['bg-class-verde', 'bg-class-giallo', 'bg-class-rosso', 'bg-class-default-scorecard'];
+            pitchClassCard.classList.remove(...scorecardClasses);
+
+
+            // --- Update Core Metrics Scorecards ---
+            if (documentData && documentData.core_metrics) {
+                const coreMetrics = documentData.core_metrics;
+                finalAdjustedScoreValue.textContent = coreMetrics.final_adjusted_score ? coreMetrics.final_adjusted_score.toFixed(2) : '--';
+                coherenceIndexValue.textContent = coreMetrics.indice_coerenza ? coreMetrics.indice_coerenza.toFixed(2) : '--';
+                pitchClassValue.textContent = coreMetrics.classe_pitch || '--';
+
+                // Update icon colors based on class
+                finalAdjustedScoreIcon.className = 'score-icon fas fa-chart-line';
+                coherenceIndexIcon.className = 'score-icon fas fa-project-diagram';
+                pitchClassIcon.className = 'score-icon fas fa-trophy';
+
+                if (coreMetrics.classe_pitch === 'Verde') {
+                    finalAdjustedScoreIcon.classList.add('score-class-verde');
+                    coherenceIndexIcon.classList.add('score-class-verde');
+                    pitchClassIcon.classList.add('score-class-verde');
+                    pitchClassCard.classList.add('bg-class-verde'); // Set background for pitchClassCard
+                } else if (coreMetrics.classe_pitch === 'Giallo') {
+                    finalAdjustedScoreIcon.classList.add('score-class-giallo');
+                    coherenceIndexIcon.classList.add('score-class-giallo');
+                    pitchClassIcon.classList.add('score-class-giallo');
+                    pitchClassCard.classList.add('bg-class-giallo'); // Set background for pitchClassCard
+                } else if (coreMetrics.classe_pitch === 'Rosso') {
+                    finalAdjustedScoreIcon.classList.add('score-class-rosso');
+                    coherenceIndexIcon.classList.add('score-class-rosso');
+                    pitchClassIcon.classList.add('score-class-rosso');
+                    pitchClassCard.classList.add('bg-class-rosso'); // Set background for pitchClassCard
+                } else {
+                    finalAdjustedScoreIcon.classList.add('score-class-default');
+                    coherenceIndexIcon.classList.add('score-class-default');
+                    pitchClassIcon.classList.add('score-class-default');
+                    pitchClassCard.classList.add('bg-class-default-scorecard'); // Default background
+                }
+                noCoreMetricsDataDiv.classList.add('hidden');
+            } else {
+                finalAdjustedScoreValue.textContent = '--';
+                coherenceIndexValue.textContent = '--';
+                pitchClassValue.textContent = '--';
+                finalAdjustedScoreIcon.className = 'score-icon fas fa-chart-line score-class-default';
+                coherenceIndexIcon.className = 'score-icon fas fa-project-diagram score-class-default';
+                pitchClassIcon.className = 'score-icon fas fa-trophy score-class-default';
+                pitchClassCard.classList.add('bg-class-default-scorecard'); // Default background
+                noCoreMetricsDataDiv.classList.remove('hidden');
+            }
+
+
+            // --- Update Variables Chart and Table ---
+            if (documentData && documentData.variables && documentData.variables.length > 0) {
+                variablesChartCanvas.style.display = 'block';
+                noDataChartDiv.classList.add('hidden');
+                noDataTableDiv.classList.add('hidden');
+
+                const labels = documentData.variables.map(v => wrapLabel(v.nome_variabile, 16));
+                const scores = documentData.variables.map(v => v.punteggio_variabile);
+                const motivations = documentData.variables.map(v => v.motivazione_variabile);
+
+                if (variablesChart) {
+                    variablesChart.data.labels = labels;
+                    variablesChart.data.datasets[0].data = scores;
+                    variablesChart.data.datasets[0].motivations = motivations;
+                    variablesChart.data.datasets[0].backgroundColor = scores.map(score => {
+                        if (score >= 85) return '#0d9488'; // teal-600 (verde)
+                        if (score >= 65) return '#fbbf24'; // amber-400 (giallo)
+                        if (score >= 40) return '#ef4444'; // red-500 (rosso)
+                        return '#cbd5e1'; // slate-300 (zero/grigio)
+                    });
+                    variablesChart.data.datasets[0].borderColor = scores.map(score => {
+                        if (score >= 85) return '#0f766e'; // teal-700
+                        if (score >= 65) return '#f59e0b'; // amber-500
+                        if (score >= 40) return '#dc2626'; // red-600
+                        return '#94a3b8'; // slate-400
+                    });
+                    variablesChart.update();
+                } else {
+                    const ctx = variablesChartCanvas.getContext('2d');
+                    variablesChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Punteggio',
+                                data: scores,
+                                backgroundColor: scores.map(score => {
+                                    if (score >= 85) return '#0d9488';
+                                    if (score >= 65) return '#fbbf24';
+                                    if (score >= 40) return '#ef4444';
+                                    return '#cbd5e1';
+                                }),
+                                borderColor: scores.map(score => {
+                                    if (score >= 85) return '#0f766e';
+                                    if (score >= 65) return '#f59e0b';
+                                    if (score >= 40) return '#dc2626';
+                                    return '#94a3b8';
+                                }),
+                                borderWidth: 1,
+                                motivations: motivations
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        title: function(context) {
+                                            return context[0].label.join(' ');
+                                        },
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed.x !== null) {
+                                                label += context.parsed.x;
+                                            }
+                                            return label;
+                                        },
+                                        afterLabel: function(context) {
+                                            const motivation = context.dataset.motivations[context.dataIndex];
+                                            return 'Motivazione: ' + motivation;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    title: {
+                                        display: true,
+                                        text: 'Punteggio (0-100)',
+                                        color: '#475569'
+                                    },
+                                    ticks: {
+                                        color: '#475569'
+                                    },
+                                    grid: {
+                                        color: '#e2e8f0'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Variabile',
+                                        color: '#475569'
+                                    },
+                                    ticks: {
+                                        color: '#475569'
+                                    },
+                                    grid: {
+                                        color: '#e2e8f0'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Update Variables Table
+                variablesTableBody.innerHTML = '';
+                documentData.variables.forEach(v => {
+                    const row = variablesTableBody.insertRow();
+                    row.className = 'text-slate-700';
+                    const cellNome = row.insertCell();
+                    cellNome.textContent = v.nome_variabile;
+                    const cellPunteggio = row.insertCell();
+                    cellPunteggio.textContent = v.punteggio_variabile;
+                    const cellMotivazione = row.insertCell();
+                    cellMotivazione.textContent = v.motivazione_variabile;
+                });
+            } else {
+                variablesChartCanvas.style.display = 'none';
+                variablesTableBody.innerHTML = '';
+                noDataChartDiv.classList.remove('hidden');
+                noDataTableDiv.classList.remove('hidden');
+                if (variablesChart) variablesChart.destroy();
+            }
+
+            // --- Update Coherence Table ---
+            if (documentData && documentData.coherence_pairs && documentData.coherence_pairs.length > 0) {
+                coherenceTableBody.innerHTML = '';
+                noCoherenceDataDiv.classList.add('hidden');
+                documentData.coherence_pairs.forEach(cp => {
+                    const row = coherenceTableBody.insertRow();
+                    row.className = 'text-slate-700';
+                    const cellCoppia = row.insertCell();
+                    cellCoppia.textContent = cp.nome_coppia;
+                    const cellPunteggio = row.insertCell();
+                    cellPunteggio.textContent = cp.punteggio_coppia;
+                    const cellMotivazione = row.insertCell();
+                    cellMotivazione.textContent = cp.motivazione_coppia;
+                });
+            } else {
+                coherenceTableBody.innerHTML = '';
+                noCoherenceDataDiv.classList.remove('hidden');
+            }
+        }
+
+        // Funzione per recuperare i dati da una (ipotetica) API backend
+        async function fetchData() {
+            loadingOverlay.classList.remove('hidden'); // Mostra overlay di caricamento
+            try {
+                const response = await fetch('https://europe-west1-validatr-mvp.cloudfunctions.net/fetchData'); 
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP! Stato: ${response.status}`);
+                }
+                const data = await response.json();
+
+                // Se la logica di filtraggio sopra è commentata, assegna tutti i dati
+                if (Object.keys(loadedAllData).length === 0) { // Controlla se loadedAllData è ancora vuoto dopo il filtro opzionale
+                    loadedAllData = data; 
+                }
+
+                // Popola il selettore dei documenti
+                documentSelector.innerHTML = ''; // Pulisci le opzioni esistenti
+                if (Object.keys(loadedAllData).length === 0) {
+                     const option = document.createElement('option');
+                     option.value = '';
+                     option.textContent = 'Nessun Pitch Deck disponibile';
+                     documentSelector.appendChild(option);
+                     documentSelector.disabled = true; // Disabilita il selettore se non ci sono dati
+                } else {
+                    documentSelector.disabled = false;
+                    for (const docId in loadedAllData) {
+                        const option = document.createElement('option');
+                        option.value = docId;
+                        // Estrae solo il nome del documento dal percorso completo se document_name non è esplicito
+                        option.textContent = (loadedAllData[docId].document_name || docId).split('/').pop();
+                        documentSelector.appendChild(option);
+                    }
+                }
+
+                // Carica la dashboard con il primo documento di default all'avvio
+                if (Object.keys(loadedAllData).length > 0) {
+                    documentSelector.value = Object.keys(loadedAllData)[0];
+                    updateDashboard(documentSelector.value);
+                } else {
+                    updateDashboard(null); // Nessun dato da mostrare
+                }
+
+            } catch (error) {
+                console.error("Errore durante il recupero dei dati:", error);
+                // Aggiorna tutti i messaggi di "nessun dato"
+                noDataChartDiv.classList.remove('hidden');
+                noDataTableDiv.classList.remove('hidden');
+                noCoreMetricsDataDiv.classList.remove('hidden');
+                noCoherenceDataDiv.classList.remove('hidden');
+
+                noDataChartDiv.textContent = 'Errore nel caricamento dei dati: ' + error.message + '. Verifica la console per dettagli.';
+                noDataTableDiv.textContent = 'Errore nel caricamento dei dati: ' + error.message + '. Verifica la console per dettagli.';
+                noCoreMetricsDataDiv.textContent = 'Errore nel caricamento dei dati: ' + error.message + '. Verifica la console per dettagli.';
+                noCoherenceDataDiv.textContent = 'Errore nel caricamento dei dati: ' + error.message + '. Verifica la console per dettagli.';
+
+                if (variablesChart) variablesChart.destroy();
+                // Reset scorecard values and backgrounds
+                finalAdjustedScoreValue.textContent = '--';
+                coherenceIndexValue.textContent = '--';
+                pitchClassValue.textContent = '--';
+                finalAdjustedScoreIcon.className = 'score-icon fas fa-chart-line score-class-default';
+                coherenceIndexIcon.className = 'score-icon fas fa-project-diagram score-class-default';
+                pitchClassIcon.className = 'score-icon fas fa-trophy score-class-default';
+                // Ensure default background is applied on error
+                pitchClassCard.classList.remove(...scorecardClasses); // Remove all dynamic classes
+                pitchClassCard.classList.add('bg-class-default-scorecard'); // Add default
+            } finally {
+                loadingOverlay.classList.add('hidden'); // Nasconde overlay di caricamento
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load Font Awesome Kit
+            const faScript = document.createElement('script');
+            faScript.src = "https://kit.fontawesome.com/a076d05399.js"; // Replace with your Font Awesome kit URL if different
+            faScript.crossOrigin = "anonymous";
+            document.head.appendChild(faScript);
+
+            documentSelector.addEventListener('change', (event) => {
+                updateDashboard(event.target.value);
+            });
+
+            fetchData(); // Avvia il recupero dei dati all'avvio
+        });
+    </script>
+</body>
+</html>
