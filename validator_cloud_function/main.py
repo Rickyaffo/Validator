@@ -6,6 +6,7 @@ import openai
 import os
 from google.cloud import storage
 from google.api_core.exceptions import NotFound # Importa l'eccezione specifica per "Not Found"
+from google.cloud import bigquery # Importa il client BigQuery
 
 # --- Inizializzazione Firebase e Firestore ---
 # Per l'ambiente Canvas, le variabili __app_id e __firebase_config sono globali.
@@ -13,6 +14,7 @@ from google.api_core.exceptions import NotFound # Importa l'eccezione specifica 
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
+from firebase_admin import auth # Nuovo import per la gestione utenti Firebase
 
 # Inizializzazione Firebase solo se non è già stata inizializzata
 if not firebase_admin._apps:
@@ -33,6 +35,7 @@ if not firebase_admin._apps:
         # Non bloccare l'esecuzione della funzione, ma logga l'errore grave
 
 db = firestore.client() # Inizializza il client Firestore
+bq_client = bigquery.Client() # Inizializza il client BigQuery
 
 # Recupera l'ID dell'app dall'ambiente Canvas o usa un default (il tuo project ID)
 APP_ID = os.environ.get('CANVAS_APP_ID', 'validatr-mvp')
@@ -71,7 +74,7 @@ RUBRICS = {
     },
     "Ritorno Atteso": {
         "descrizione": "Perché dovrebbero finanziarti?",
-        "criteri": "Stima numericamente l’attrattività finanziaria della startup dal punto di vista degli investitori professionali, utilizzando modelli predittivi rigorosi come IRR (Internal Rate of Return), moltiplicatori attesi e diluizione equity. Variabili valutate: IRR stimato, multipli di investimento, equity post-diluizione, comparabilità con benchmark di mercato, giustificazione oggettiva della valuation richiesta."
+        "criteri": "Stima numericamente l’attrattivit\u00E0 finanziaria della startup dal punto di vista degli investitori professionali, utilizzando modelli predittivi rigorosi come IRR (Internal Rate of Return), moltiplicatori attesi e diluizione equity. Variabili valutate: IRR stimato, multipli di investimento, equity post-diluizione, comparabilità con benchmark di mercato, giustificazione oggettiva della valuation richiesta."
     }
 }
 
@@ -93,7 +96,14 @@ COHERENCE_PAIRS = [
 def analyze_pitch_deck_with_gpt(pitch_text):
     system_prompt_content = """Sei un analista esperto di pitch deck per startup. Il tuo compito è valutare un pitch deck fornito, identificare 7 variabili chiave, assegnare un punteggio da 0 a 100 a ciascuna variabile basandoti sulle rubriche fornite, fornire una motivazione dettagliata per ogni punteggio, e valutare la coerenza interna tra specifiche coppie di variabili. Restituisci tutte le informazioni in un formato JSON valido.
 
-Le 7 variabili chiave sono: Problema, Target, Soluzione, Mercato, MVP, Team, Ritorno Atteso.
+Un pitch deck è un documento che fornisce una panoramica completa del business di una startup. Le 7 variabili chiave vengono tipicamente presentate e approfondite nel PDF con queste modalità:
+- **Problema**: Viene individuato e evidenziato tramite analisi o interviste a clienti reali, mostrando la sua urgenza e rilevanza.
+- **Soluzione**: Si descrive cosa si offre e il valore unico che si condivide con il cliente, distinguendosi dalle alternative.
+- **Mercato**: Si analizza la dimensione del mercato (TAM, SAM, SOM) e si studiano i competitor, evidenziando le loro soluzioni, punti di forza e di debolezza, a volte tramite mappe o matrici di posizionamento.
+- **Business Model**: Si spiega in che modo l'azienda genera le proprie entrate.
+- **Ritorno Atteso**: Si illustrano i momenti chiave per lanciare il progetto e le proiezioni di crescita nei prossimi anni per gli investitori.
+- **Team**: Si presenta chi sono i membri fondatori e del team, per generare fiducia e dimostrare la capacità esecutiva.
+- **MVP**: Viene descritto il Minimum Viable Product, la prova tangibile della sua promessa della startup, sufficientemente maturo per i test.
 
 **Rubrica per i punteggi (0-100):**
 - 0-20: Mancante o completamente irrilevante.
@@ -175,10 +185,10 @@ Testo del pitch deck da analizzare:
     ]
 
     response = openai.chat.completions.create(
-        model="gpt-3.5-turbo", # Puoi valutare l'uso di gpt-4o per una maggiore qualità
+        model="gpt-4.1-nano", # Modello GPT aggiornato
         messages=messages,
         temperature=0.1,
-        max_tokens=2500,
+        max_tokens=3500, # Max tokens aggiornato
         response_format={"type": "json_object"}
     )
 
@@ -206,31 +216,30 @@ def perform_additional_calculations(gpt_analysis_data):
     print(f"Indice di Coerenza (IC): {ic:.2f}")
 
     # 2. Calcolo del Final_Score e Final_Adjusted_Score.
-    # Definisci i pesi per ogni variabile. Questi sono esempi, personalizzali.
-    weights = {
-        "Problema": 0.15,
-        "Target": 0.10,
-        "Soluzione": 0.15,
-        "Mercato": 0.15,
-        "MVP": 0.15,
-        "Team": 0.15,
-        "Ritorno Atteso": 0.15
+    # Definisci i pesi per ogni variabile.
+    weights = { # Pesi aggiornati dall'utente
+        "Problema": 0.20,
+        "Target": 0.17,
+        "Soluzione": 0.17,
+        "Mercato": 0.16,
+        "MVP": 0.08,
+        "Team": 0.08,
+        "Ritorno Atteso": 0.14
     }
 
     final_score = sum(variabili_valutate_dict.get(var, 0) * weights.get(var, 0) for var in weights)
     print(f"Final Score: {final_score:.2f}")
 
-    # L'Adjusted Score tiene conto dell'IC
-    final_adjusted_score = final_score * (ic / 100)
-    print(f"Final Adjusted Score: {final_adjusted_score:.2f}")
+    # L'Adjusted Score ora è una media ponderata
+    peso_final_score = 0.7
+    peso_indice_coerenza = 0.3
+    final_adjusted_score = (final_score * peso_final_score + ic * peso_indice_coerenza)
+    print(f"Final Adjusted Score (Nuova Logica): {final_adjusted_score:.2f}")
 
     # 3. Calcolo dello Z-score.
-    # Questo richiede dati storici (media e deviazione standard di Final_Adjusted_Score).
-    # Per l'MVP, lo lasciamo come None.
     z_score = None # Implementare quando avrai un dataset storico
 
     # 4. Assegnazione della Classe (Rosso, Giallo, Verde, Immunizzato, Zero)
-    # Definisci le tue soglie e la logica qui.
     startup_class = "Non Classificato"
     if final_adjusted_score >= 85: # Soglia per "Verde"
         startup_class = "Verde"
@@ -240,8 +249,6 @@ def perform_additional_calculations(gpt_analysis_data):
         startup_class = "Rosso"
     elif final_adjusted_score > 0:
         startup_class = "Zero" # Per punteggi bassi ma non nulli
-    # La classe "Immunizzato" potrebbe essere per casi eccezionali, non basati solo sul punteggio.
-    # Es: if final_adjusted_score >= 95 and specific_condition_met: startup_class = "Immunizzato"
 
     print(f"Classe Assegnata: {startup_class}")
 
@@ -257,39 +264,173 @@ def perform_additional_calculations(gpt_analysis_data):
     return gpt_analysis_data
 
 # --- Funzione per Salvare i Dati su Firestore ---
-def save_to_firestore(document_id, data):
+def save_to_firestore(document_id, data, user_id=None): # Aggiunto user_id come parametro opzionale
     try:
-        # Percorso della collezione: /artifacts/{appId}/public/data/pitch_deck_analyses
-        # Usiamo una collezione 'public' per semplicità, considerando che i dati
-        # potrebbero essere condivisi o consultati da diverse UI (es. Looker Studio).
-        collection_ref = db.collection('artifacts').document(APP_ID).collection('public').document('data').collection('pitch_deck_analyses')
+        if user_id:
+            # Salva nel percorso privato dell'utente
+            collection_ref = db.collection('artifacts').document(APP_ID).collection('users').document(user_id).collection('pitch_deck_analyses')
+            print(f"Saving to user-specific Firestore path: {collection_ref.document(document_id).path}")
+        else:
+            # Salva nel percorso pubblico di default
+            collection_ref = db.collection('artifacts').document(APP_ID).collection('public').document('data').collection('pitch_deck_analyses')
+            print(f"Saving to public Firestore path: {collection_ref.document(document_id).path}")
         
         # Firestore non supporta liste di liste o oggetti troppo complessi direttamente
-        # Quindi, se il JSON contiene strutture nidificate problematiche, potrebbe essere necessario serializzarle.
-        # Assumiamo che 'data' (final_analysis) sia già compatibile.
         collection_ref.document(document_id).set(data)
         print(f"Dati salvati con successo su Firestore: {collection_ref.document(document_id).path}")
         return True
     except Exception as e:
-        print(f"ERRORE nel salvataggio su Firestore per il documento {document_id}: {e}")
-        # Non rilanciare l'errore per evitare retry della Cloud Function
+        print(f"ERRORE nel salvataggio su Firestore per il documento {document_id} (user_id: {user_id if user_id else 'N/A'}): {e}")
         return False
 
-# --- Funzione principale della Cloud Function ---
+# --- Nuova funzione per recuperare e aggregare i dati da BigQuery per la dashboard ---
+@functions_framework.http
+def get_dashboard_data(request):
+    # Gestione delle richieste OPTIONS per CORS pre-flight
+    if request.method == 'OPTIONS':
+        headers = {
+            'Access-Control-Allow-Origin': '*', # In produzione, sostituisci con 'https://validatr-mvp.web.app'
+            'Access-Control-Allow-Methods': 'GET, POST',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Max-Age': '3600'
+        }
+        return ('', 204, headers)
+
+    # Imposta gli header CORS per le richieste reali (GET/POST)
+    headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*', # In produzione, sostituisci con 'https://validatr-mvp.web.app'
+    }
+
+    try:
+        # Autenticazione dell'utente tramite Firebase ID Token
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return json.dumps({"error": "Authorization header missing"}), 401, headers
+        
+        id_token = auth_header.split('Bearer ')[1]
+        
+        try:
+            decoded_token = auth.verify_id_token(id_token)
+            uid = decoded_token['uid']
+            print(f"Richiesta autenticata da UID: {uid}")
+        except Exception as e:
+            print(f"Errore nella verifica del token Firebase: {e}")
+            return json.dumps({"error": f"Invalid Firebase ID token: {e}"}), 403, headers
+
+        # Ottieni il parametro di filtro dalla richiesta
+        filter_type = request.args.get('filter', 'all') # 'all' o 'my'
+
+        all_grouped_data = {}
+    
+        # Definisci il tuo ID progetto e dataset BigQuery
+        PROJECT_ID = "validatr-mvp" 
+        DATASET_ID = "validatr_analyses_dataset"
+        
+        # --- Recupera e raggruppa i dati da calcoli_aggiuntivi_view ---
+        query_core = f"""
+        SELECT
+            document_id,
+            document_name,
+            classe_pitch,
+            final_score,
+            final_adjusted_score,
+            z_score,
+            indice_coerenza,
+            userId -- Aggiungi userId dalla vista
+        FROM
+            `{PROJECT_ID}.{DATASET_ID}.calcoli_aggiuntivi_view`
+        """
+        rows_core = bq_client.query(query_core).result()
+        for row in rows_core:
+            doc_id = row.document_id
+            # Applica il filtro 'my' qui per includere solo i pitch dell'utente corrente
+            if filter_type == 'my' and row.userId != uid:
+                continue
+
+            if doc_id not in all_grouped_data:
+                all_grouped_data[doc_id] = {
+                    "document_name": row.document_name,
+                    "core_metrics": {},
+                    "variables": [],
+                    "coherence_pairs": []
+                }
+            all_grouped_data[doc_id]["core_metrics"] = {
+                "classe_pitch": row.classe_pitch,
+                "final_score": row.final_score,
+                "final_adjusted_score": row.final_adjusted_score,
+                "z_score": row.z_score,
+                "indice_coerenza": row.indice_coerenza,
+                "userId": row.userId # Includi userId nelle metriche core
+            }
+    
+        # --- Recupera e raggruppa i dati da valutazione_pitch_view ---
+        query_vars = f"""
+        SELECT
+            document_id,
+            nome_variabile,
+            punteggio_variabile,
+            motivazione_variabile
+        FROM
+            `{PROJECT_ID}.{DATASET_ID}.valutazione_pitch_view`
+        """
+        rows_vars = bq_client.query(query_vars).result()
+        for row in rows_vars:
+            doc_id = row.document_id
+            # Includi solo i documenti che sono già stati filtrati e inclusi da core_metrics
+            if doc_id in all_grouped_data:
+                all_grouped_data[doc_id]["variables"].append({
+                    "nome_variabile": row.nome_variabile,
+                    "punteggio_variabile": row.punteggio_variabile,
+                    "motivazione_variabile": row.motivazione_variabile
+                })
+    
+        # --- Recupera e raggruppa i dati da pitch_coherence_view ---
+        query_coh = f"""
+        SELECT
+            document_id,
+            nome_coppia,
+            punteggio_coppia,
+            motivazione_coppia
+        FROM
+            `{PROJECT_ID}.{DATASET_ID}.pitch_coherence_view`
+        """
+        rows_coh = bq_client.query(query_coh).result()
+        for row in rows_coh:
+            doc_id = row.document_id
+            # Includi solo i documenti che sono già stati filtrati e inclusi da core_metrics
+            if doc_id in all_grouped_data:
+                all_grouped_data[doc_id]["coherence_pairs"].append({
+                    "nome_coppia": row.nome_coppia,
+                    "punteggio_coppia": row.punteggio_coppia,
+                    "motivazione_coppia": row.motivazione_coppia
+                })
+    
+        return json.dumps(all_grouped_data), 200, headers
+
+    except Exception as e:
+        print(f"Errore nella funzione get_dashboard_data: {e}")
+        return json.dumps({"error": str(e)}), 500, headers
+
+
+# --- Funzione principale della Cloud Function (attivata da Cloud Storage) ---
 @functions_framework.cloud_event
 def process_pitch_deck(cloud_event):
     print(f"\n--- DEBUG: Contenuto completo di cloud_event ---")
     print(cloud_event)
     print(f"--- FINE DEBUG cloud_event ---\n")
 
+    # IMPORANTE: MODIFICA CON L'EMAIL DEL TUO ADMIN FIREBASE
+    # Questa email verrà usata per associare i caricamenti manuali a un utente admin specifico.
+    # In un ambiente di produzione, considera di usare Google Secret Manager per questo valore.
+    ADMIN_EMAIL_FOR_MANUAL_UPLOADS = "admin@validatr.com" # <--- MODIFICA QUI
+
     try:
         event_data = None
         if isinstance(cloud_event, dict):
             event_data = cloud_event.get("data")
-            print(f"--- DEBUG: cloud_event è un dict. event_data da .get('data'): {event_data is not None} ---")
         elif hasattr(cloud_event, "data"):
             event_data = cloud_event.data
-            print(f"--- DEBUG: cloud_event ha attributo .data. event_data: {event_data is not None} ---")
         else:
             print("Errore: cloud_event non è un dizionario e non ha l'attributo 'data'.")
             return {"status": "error", "message": "CloudEvent is neither a dict nor has a 'data' attribute."}
@@ -297,10 +438,6 @@ def process_pitch_deck(cloud_event):
         if event_data is None:
             print("Errore: Nessun dato 'data' valido nell'evento CloudEvent dopo la verifica.")
             return {"status": "error", "message": "Missing 'data' in CloudEvent after checks."}
-
-        print(f"\n--- DEBUG: Contenuto di event_data (ex cloud_event.data) ---")
-        print(event_data)
-        print(f"--- FINE DEBUG event_data ---\n")
 
         if "bucket" not in event_data or "name" not in event_data:
             print("Errore: Dati 'bucket' o 'name' mancanti nell'evento CloudEvent.")
@@ -327,49 +464,121 @@ def process_pitch_deck(cloud_event):
 
         final_analysis = None # Inizializza final_analysis
 
-        if output_blob.exists():
-            print(f"L'analisi per '{file_name}' esiste già come '{output_blob_name}'. Caricamento del file esistente.")
-            try:
-                existing_json_content = output_blob.download_as_text()
-                final_analysis = json.loads(existing_json_content)
-                print(f"File JSON esistente caricato con successo.")
-            except Exception as e:
-                print(f"ATTENZIONE: Errore durante il caricamento o parsing del file JSON esistente '{output_blob_name}': {e}. Procedo con una nuova analisi.")
-                final_analysis = None # Forza la ri-generazione se il caricamento fallisce
-        
-        # Se final_analysis è ancora None (significa che non esisteva o non è stato caricato correttamente)
-        if final_analysis is None:
-            # Scarica il contenuto del PDF in memoria per la nuova analisi
-            pdf_content = io.BytesIO(input_blob.download_as_bytes())
-            reader = PyPDF2.PdfReader(pdf_content)
-            all_text = ""
-            for page_num in range(len(reader.pages)):
-                page = reader.pages[page_num]
-                extracted_page_text = page.extract_text()
-                if extracted_page_text:
-                    all_text += extracted_page_text + "\n"
+        # --- RECUPERO USER_ID PER FIRESTORE ---
+        user_id_for_firestore = None
+        blob_metadata = None # Inizializza per sicurezza
 
-            all_text = all_text.replace('\n\n', '\n').strip()
-            print(f"Testo estratto dal PDF (primi 500 caratteri): {all_text[:500]}...")
+        if input_blob.exists():
+            input_blob.reload() # Assicurati di avere i metadati più recenti
+            blob_metadata = input_blob.metadata # Assegna i metadati a una variabile locale
 
-            # --- Chiamata API GPT per l'Analisi REALE ---
-            analysis_result = analyze_pitch_deck_with_gpt(all_text) 
-            
-            if analysis_result:
-                final_analysis = perform_additional_calculations(analysis_result)
+            if blob_metadata: # Verifica se i metadati sono presenti e non None
+                # 1. Tenta di ottenere l'email dell'utente finale dai metadati di Zapier/Typeform
+                user_email_from_metadata = blob_metadata.get('user_email')
+                if user_email_from_metadata:
+                    try:
+                        user_record = auth.get_user_by_email(user_email_from_metadata)
+                        user_id_for_firestore = user_record.uid
+                        print(f"Associando il pitch all'utente Firebase (email): {user_email_from_metadata} (UID: {user_id_for_firestore})")
+                    except auth.UserNotFoundError:
+                        print(f"WARNING: Utente Firebase '{user_email_from_metadata}' (da metadati 'user_email') non trovato. Cerco altre fonti o salvo pubblicamente.")
+                    except Exception as e:
+                        print(f"ERROR: Errore durante il recupero UID per '{user_email_from_metadata}': {e}. Cerco altre fonti o salvo pubblicamente.")
+                else:
+                    print("Metadato 'user_email' non presente nel blob.")
+
+                # 2. Se l'utente finale non è stato identificato, controlla se è un caricamento manuale dell'admin
+                if not user_id_for_firestore:
+                    upload_source_metadata = blob_metadata.get('upload_source')
+                    if upload_source_metadata == 'manual_admin':
+                        # Se è un caricamento manuale dell'admin, salva SEMPRE nel percorso pubblico.
+                        # Non associarlo a un UID specifico in Firestore per questo tipo di upload.
+                        user_id_for_firestore = None 
+                        print(f"Associando il pitch come pubblico a causa di 'manual_admin' source.")
+                        # Potresti voler loggare l'email admin qui per tracciabilità nei log
+                        # try:
+                        #     admin_user_record = auth.get_user_by_email(ADMIN_EMAIL_FOR_MANUAL_UPLOADS)
+                        #     print(f"Caricamento manuale dell'Admin (Email: {ADMIN_EMAIL_FOR_MANUAL_UPLOADS}, UID: {admin_user_record.uid}) salvato pubblicamente.")
+                        # except Exception as e:
+                        #     print(f"Impossibile risolvere UID Admin per logging: {e}")
+                    else:
+                        print("Metadato 'upload_source' non presente o non 'manual_admin'.")
             else:
-                print("Errore: L'analisi GPT non ha prodotto risultati validi o parsabili.")
-                return {"status": "error", "message": "GPT analysis failed or returned invalid data."}
+                print("WARNING: Blob esiste ma non ha metadati personalizzati. Il pitch sarà salvato pubblicamente.")
+        else:
+            print("WARNING: Blob non trovato per la lettura dei metadati. Il pitch sarà salvato pubblicamente.")
 
-        # A questo punto, final_analysis contiene o il JSON ricaricato o il JSON appena generato
+
+        # Scarica il contenuto del PDF in memoria per la nuova analisi
+        pdf_content = io.BytesIO(input_blob.download_as_bytes())
+        reader = PyPDF2.PdfReader(pdf_content)
+        all_text = ""
+        for page_num in range(len(reader.pages)):
+            page = reader.pages[page_num]
+            extracted_page_text = page.extract_text()
+            if extracted_page_text:
+                all_text += extracted_page_text + "\n"
+
+        all_text = all_text.replace('\n\n', '\n').strip()
+        print(f"Testo estratto dal PDF (primi 500 caratteri): {all_text[:500]}...")
+
+        # --- Chiamata API GPT per l'Analisi REALE ---
+        analysis_result = analyze_pitch_deck_with_gpt(all_text) 
         
+        # --- RISULTATO MOCK PER IL TEST SE GPT E' DISABILITATO ---
+        if analysis_result is None:
+            print("Utilizzando risultati di analisi mock per testing. ABILITA LA CHIAMATA GPT PER L'ANALISI REALE.")
+            analysis_result = {
+                "variabili_valutate": [
+                    {"nome": "Problema", "punteggio": 70, "motivazione": "Mock: Il problema è ben compreso."},
+                    {"nome": "Target", "punteggio": 65, "motivazione": "Mock: Target definito."},
+                    {"nome": "Soluzione", "punteggio": 75, "motivazione": "Mock: Soluzione chiara."},
+                    {"nome": "Mercato", "punteggio": 60, "motivazione": "Mock: Mercato ampio."},
+                    {"nome": "MVP", "punteggio": 55, "motivazione": "Mock: MVP migliorabile."},
+                    {"nome": "Team", "punteggio": 80, "motivazione": "Mock: Team forte."},
+                    {"nome": "Ritorno Atteso", "punteggio": 40, "motivazione": "Mock: Ritorno poco chiaro."}
+                ],
+                "coerenza_coppie": [
+                    {"coppia": "Problema - Soluzione", "punteggio": 70, "motivazione": "Mock: Coerenza Problema-Soluzione buona."},
+                    {"coppia": "Target - Mercato", "punteggio": 65, "motivazione": "Mock: Coerenza Target-Mercato media."},
+                    {"coppia": "Soluzione - MVP", "punteggio": 50, "motivazione": "Mock: Coerenza Soluzione-MVP debole."},
+                    {"coppia": "Team - Ritorno Atteso", "punteggio": 45, "motivazione": "Mock: Coerenza Team-Ritorno Atteso bassa."},
+                    {"coppia": "Problema - Target", "punteggio": 70, "motivazione": "Il problema è rilevante per il target definito, ma la connessione tra le esigenze specifiche di questo segmento e la soluzione proposta potrebbe essere più esplicita e approfondita."},
+                    {"coppia": "Problema - Mercato", "punteggio": 80, "motivazione": "Il mercato è ampio e in crescita, coerente con il problema e la soluzione, anche se sarebbe utile un collegamento più diretto tra la dimensione del mercato e la reale domanda del target."},
+                    {"coppia": "Problema - MVP", "punteggio": 50, "motivazione": "L'MVP è menzionato ma non dettagliato, quindi la coerenza tra problema e MVP è debole. È difficile valutare se l'MVP possa effettivamente validare il problema senza ulteriori informazioni."},
+                    {"coppia": "Problema - Team", "punteggio": 65, "motivazione": "Il team ha competenze rilevanti, ma non è chiaro se abbia le capacità specifiche per risolvere il problema in modo efficace, specialmente in relazione alle sfide tecniche e di mercato."},
+                    {"coppia": "Problema - Ritorno Atteso", "punteggio": 40, "motivazione": "L'assenza di stime di ritorno rende poco coerente la relazione tra il problema e le aspettative di ritorno economico, creando una disconnessione tra la necessità di risolvere il problema e i benefici attesi."},
+                    {"coppia": "Target - Soluzione", "punteggio": 75, "motivazione": "La soluzione è pensata per il target, ma potrebbe essere più personalizzata o adattata alle esigenze specifiche di questo segmento, migliorando la coerenza."},
+                    {"coppia": "Target - MVP", "punteggio": 55, "motivazione": "L'MVP non è descritto in modo dettagliato, quindi la coerenza tra target e MVP è limitata. È difficile capire se l'MVP sia tarato sulle esigenze specifiche del target."},
+                    {"coppia": "Target - Team", "punteggio": 70, "motivazione": "Il team ha competenze adeguate per il target, ma non sono evidenziate esperienze specifiche nel segmento di mercato o nelle esigenze di questo pubblico."},
+                    {"coppia": "Target - Ritorno Atteso", "punteggio": 45, "motivazione": "L'assenza di stime di ritorno rende poco coerente la relazione tra il target e le aspettative di ritorno economico, creando un gap tra le esigenze del segmento e i benefici attesi."},
+                    {"coppia": "Soluzione - Mercato", "punteggio": 80, "motivazione": "La soluzione si inserisce in un mercato in crescita e con ampio potenziale, coerente con le dimensioni e le tendenze del settore."},
+                    {"coppia": "Soluzione - Team", "punteggio": 70, "motivazione": "Il team ha competenze tecniche e di marketing, coerenti con lo sviluppo e il lancio della soluzione, anche se mancano dettagli sulla capacità di innovare o differenziarsi."},
+                    {"coppia": "Soluzione - Ritorno Atteso", "punteggio": 45, "motivazione": "L'assenza di proiezioni di ritorno rende debole la coerenza tra la soluzione proposta e le aspettative di ritorno economico."},
+                    {"coppia": "Mercato - MVP", "punteggio": 55, "motivazione": "L'MVP non è descritto in modo dettagliato, quindi la coerenza tra mercato e MVP è limitata. Non si può valutare se l'MVP possa validare il mercato."},
+                    {"coppia": "Mercato - Team", "punteggio": 75, "motivazione": "Il mercato ampio e in crescita richiede un team con competenze specifiche, che il team sembra possedere, anche se non sono dettagliate le esperienze nel settore."},
+                    {"coppia": "Mercato - Ritorno Atteso", "punteggio": 50, "motivazione": "L'assenza di stime di ritorno rende poco coerente la relazione tra dimensione di mercato e aspettative di ritorno economico."},
+                    {"coppia": "MVP - Team", "punteggio": 50, "motivazione": "L'MVP non è dettagliato, quindi la coerenza con il team è limitata. Non si può valutare se il team abbia le competenze per sviluppare e validare l'MVP."},
+                    {"coppia": "MVP - Ritorno Atteso", "punteggio": 40, "motivazione": "L'assenza di stime di ritorno rende debole la coerenza tra MVP e ritorno atteso, creando un gap tra la validazione del prodotto e i benefici economici."},
+                    {"coppia": "Team - Ritorno Atteso", "punteggio": 55, "motivazione": "Il team ha competenze adeguate, ma senza proiezioni di ritorno, la relazione tra capacità esecutiva e benefici economici attesi è poco supportata."}
+                ]
+            }
+        # --- FINE RISULTATO MOCK ---
+
+        if analysis_result:
+            final_analysis = perform_additional_calculations(analysis_result)
+        else:
+            print("Errore: L'analisi non ha prodotto risultati validi o parsabili (probabilmente mock non attivo o errore GPT).")
+            return {"status": "error", "message": "Analysis failed or returned invalid data."}
+
         # Usiamo il nome del file (senza estensione) come ID documento Firestore
         document_id = base_file_name 
 
-        # --- SALVA O AGGIORNA SU FIRESTORE ---
-        firestore_save_success = save_to_firestore(document_id, final_analysis)
+        # --- SALVA O AGGIORNA SU FIRESTORE (con user_id) ---
+        # user_id_for_firestore sarà l'UID dell'utente finale, dell'admin, o None per il pubblico
+        firestore_save_success = save_to_firestore(document_id, final_analysis, user_id=user_id_for_firestore)
         if not firestore_save_success:
-            print(f"AVVERTIMENTO: Il salvataggio/aggiornamento su Firestore per {document_id} è fallito. L'analisi è stata completata ma il dato non è stato persistito in Firestore.")
+            print(f"AVVERTIMENTO: Il salvataggio/aggiornamento su Firestore per {document_id} (user_id: {user_id_for_firestore if user_id_for_firestore else 'N/A'}) è fallito. L'analisi è stata completata ma il dato non è stato persistito in Firestore.")
         
         # --- SALVA O AGGIORNA SU CLOUD STORAGE ---
         try:
@@ -395,3 +604,4 @@ def process_pitch_deck(cloud_event):
         print(f"ERRORE GENERALE NON CATTURATO: {e}")
         print(f"Si è verificato un errore inatteso durante l'elaborazione del file: {file_name}. L'esecuzione verrà terminata come successo per evitare retry.")
         return {"status": "error", "message": f"An unexpected error occurred: {e}. Execution terminated successfully to prevent retries."}
+

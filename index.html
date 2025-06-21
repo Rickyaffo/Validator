@@ -3,56 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VALIDATR™ - Analisi Variabili Pitch Deck</title>
+    <title>VALIDATR™ - Dashboard Completa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> <!-- Font Awesome for icons -->
+    
+    <!-- Google Material Icons (Outlined style) for icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Slate & Teal -->
-    <!-- Application Structure Plan: A single-page dashboard centered around analyzing pitch deck variables. The layout consists of a top header with a title and a document selection dropdown. Below, a main content area uses a responsive grid to display scorecards for key metrics, a horizontal bar chart for variable scores, and detailed tables for scores and motivations. This structure allows users to quickly filter by document and then explore both summary insights and detailed textual explanations. -->
-    <!-- Visualization & Content Choices:
-        - Document Selector -> Dropdown (HTML/JS) -> Goal: Filter -> Allows selection of a single pitch deck for detailed analysis.
-        - Key Metrics -> Scorecards (HTML/JS) -> Goal: Summarize/Inform -> Provides quick, prominent display of overall scores and class.
-        - Variable Scores -> Horizontal Bar Chart (Chart.js) -> Goal: Compare/Inform -> Visually compares scores of different variables; interactive tooltips provide motivations.
-        - Variable Details (Scores & Motivations) -> HTML Table (JS dynamic update) -> Goal: Inform/Organize -> Presents precise scores and full motivational text in a readable format.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <!-- Font Changed to Roboto -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK (Versioni da CDN) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, query, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Configurazione Firebase del tuo progetto
+        // Questi valori sono stati presi dal file index.html fornito dall'utente.
+        const firebaseConfig = {
+            apiKey: "AIzaSyDlGp9jxE1YubvFm6MDqSMT9M9G_5iu1f4",
+            authDomain: "validatr-mvp.firebaseapp.com",
+            projectId: "validatr-mvp",
+            storageBucket: "validatr-mvp.firebasestorage.app",
+            messagingSenderId: "967024558151",
+            appId: "1:967024558151:web:55146fdedd24314cc6f162",
+            measurementId: "G-JEE15JVL0N"
+        };
+
+        // Inizializza Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app); // Firestore instance
+
+        // Variabili globali per l'uso nello script principale
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.setPersistence = setPersistence;
+        window.browserSessionPersistence = browserSessionPersistence;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.signOut = signOut;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.getFirestore = getFirestore;
+        window.collection = collection;
+        window.query = query;
+        window.getDocs = getDocs;
+        window.doc = doc;
+        window.getDoc = getDoc;
+
+        // Variabile globale per l'APP_ID di Firestore (percorsi collezione)
+        // Questo dovrebbe corrispondere all'APP_ID usato nella tua Cloud Function
+        window.APP_ID = firebaseConfig.projectId;
+    </script>
+
+    <!-- Stilizzazione generale -->
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Roboto', sans-serif; /* Font Changed to Roboto */
             background-color: #f8fafc; /* slate-50 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: 2rem; /* Spazio per il piè di pagina */
         }
         .container-padding {
-            padding-left: 1rem; /* px-4 */
-            padding-right: 1rem; /* px-4 */
+            padding-left: 1rem;
+            padding-right: 1rem;
         }
         @media (min-width: 640px) { /* sm */
             .container-padding {
-                padding-left: 2rem; /* sm:px-8 */
-                padding-right: 2rem; /* sm:px-8 */
+                padding-left: 2rem;
+                padding-right: 2rem;
             }
         }
         @media (min-width: 1024px) { /* lg */
             .container-padding {
-                padding-left: 4rem; /* lg:px-16 */
-                padding-right: 4rem; /* lg:px-16 */
-            }
-        }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 650px; /* Max width for readability on large screens */
-            margin-left: auto;
-            margin-right: auto;
-            height: 400px; /* Base height */
-            max-height: 500px; /* Max height to prevent excessive vertical space */
-        }
-        @media (max-width: 640px) { /* Mobile specific adjustments */
-            .chart-container {
-                height: 300px;
-                max-height: 400px;
+                padding-left: 4rem;
+                padding-right: 4rem;
             }
         }
         .card {
@@ -62,16 +92,19 @@
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-lg */
             border: 1px solid #e2e8f0; /* slate-200 */
         }
-        th, td {
-            padding: 0.75rem;
-            text-align: left;
-            vertical-align: top;
-            border-bottom: 1px solid #e2e8f0; /* slate-200 */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px; /* Larghezza massima per il grafico */
+            margin-left: auto;
+            margin-right: auto;
+            height: 500px; /* Altezza base per un buon numero di barre */
+            max-height: 700px; /* Altezza massima */
         }
-        th {
-            background-color: #f1f5f9; /* slate-100 */
-            font-weight: 600;
-            color: #1e293b; /* slate-800 */
+        @media (max-width: 768px) { /* Adattamento per tablet/mobile */
+            .chart-container {
+                height: 400px; /* Riduci altezza per schermi più piccoli */
+            }
         }
         .loading-overlay {
             position: absolute;
@@ -98,7 +131,8 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Card Score Styling */
+
+        /* Card Score Styling (per la dashboard dettagliata) */
         .scorecard-item {
             display: flex;
             flex-direction: column;
@@ -122,9 +156,24 @@
             color: #475569; /* slate-600 */
             text-align: center;
         }
+        /* Update score-icon class for Material Icons */
         .score-icon {
             font-size: 2.5rem; /* text-5xl */
             margin-bottom: 0.5rem;
+            font-family: 'Material Icons Outlined'; /* Specify Material Icons font family */
+            font-weight: normal;
+            font-style: normal;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            -moz-osx-font-smoothing: grayscale;
+            font-feature-settings: 'liga';
         }
         /* Icon Colors */
         .score-class-verde { color: #10b981; } /* emerald-500 */
@@ -139,139 +188,273 @@
         .bg-class-default-scorecard { background-color: #f8fafc; border-color: #e2e8f0; } /* slate-50, slate-200 */
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center py-8">
-    <!-- Intestazione Principale -->
-    <header class="w-full container-padding mb-8">
-        <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+<body class="min-h-screen flex flex-col items-center">
+    <!-- Intestazione Principale e Barra di Navigazione -->
+    <header class="w-full bg-white shadow-lg border-b border-slate-200 fixed top-0 z-20">
+        <div class="container-padding mx-auto py-4 flex flex-col sm:flex-row items-center justify-between">
             <h1 class="text-3xl font-bold text-slate-900 mb-4 sm:mb-0">
-                Dashboard Analisi Variabili VALIDATR™
+                VALIDATR™
             </h1>
-            <div class="flex items-center space-x-4">
-                <label for="documentSelector" class="text-slate-700 font-medium">Seleziona Pitch Deck:</label>
-                <select id="documentSelector" class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
-                    <!-- Opzioni popolate da JS -->
-                </select>
+            <nav class="flex space-x-6 mb-4 sm:mb-0">
+                <a href="#" id="navHome" class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600">Home (Dashboard Dettagliata)</a>
+                <a href="#" id="navDealFlow" class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600">Deal Flow (Ranking Investitori)</a>
+            </nav>
+            <div id="authStatus" class="flex items-center text-slate-700 font-medium hidden">
+                Benvenuto, <span id="userEmail" class="ml-1 font-semibold text-teal-600"></span>!
+                <button id="logoutButton" class="ml-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition duration-200">
+                    Logout
+                </button>
             </div>
         </div>
     </header>
 
-    <!-- Contenuto Principale della Dashboard -->
-    <main class="w-full container-padding grid grid-cols-1 lg:grid-cols-2 gap-8 relative">
-        <div id="loadingOverlay" class="loading-overlay">
+    <!-- Sezione di Login -->
+    <div id="loginSection" class="w-full max-w-md card mt-[100px] p-8 flex flex-col items-center">
+        <h2 class="text-2xl font-semibold text-slate-800 mb-6">Accedi a VALIDATR™</h2>
+        <input type="email" id="emailInput" placeholder="Email" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+        <input type="password" id="passwordInput" placeholder="Password" class="w-full px-4 py-2 mb-6 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+        <button id="loginButton" class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200">
+            Accedi
+        </button>
+        <p id="loginError" class="text-red-600 mt-4 hidden"></p>
+    </div>
+
+    <!-- Contenuto Principale della Dashboard (Nascosto inizialmente, con padding per la navbar fissa) -->
+    <main id="dashboardContent" class="w-full container-padding mt-[100px] grid grid-cols-1 gap-8 relative hidden">
+        <div id="loadingOverlay" class="loading-overlay hidden">
             <div class="spinner"></div>
             <p class="ml-4 text-slate-700 text-lg">Caricamento dati...</p>
         </div>
 
-        <!-- Nuova Sezione: Riepilogo Generale (Scorecard) -->
-        <section class="card lg:col-span-2 mb-8">
-            <h2 class="text-2xl font-semibold text-slate-800 mb-6">Riepilogo Generale del Pitch Deck</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="scorecard-item">
-                    <div id="finalAdjustedScoreIcon" class="score-icon fas fa-chart-line score-class-default"></div>
-                    <div id="finalAdjustedScoreValue" class="scorecard-value">--</div>
-                    <div class="scorecard-label">Score Finale Regolato</div>
+        <!-- Home: Dashboard Dettagliata (Variabili Pitch Deck) -->
+        <div id="homeDashboard" class="flex flex-col w-full">
+            <header class="w-full container-padding mb-8 pt-8">
+                <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-4 sm:mb-0">
+                        Dashboard Analisi Dettagliata
+                    </h2>
+                    <div class="flex items-center space-x-4">
+                        <label for="documentSelector" class="text-slate-700 font-medium">Seleziona Pitch Deck:</label>
+                        <select id="documentSelector" class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+                            <!-- Opzioni popolate da JS -->
+                        </select>
+                    </div>
                 </div>
-                <div class="scorecard-item">
-                    <div id="coherenceIndexIcon" class="score-icon fas fa-project-diagram score-class-default"></div>
-                    <div id="coherenceIndexValue" class="scorecard-value">--</div>
-                    <div class="scorecard-label">Indice di Coerenza</div>
-                </div>
-                <div id="pitchClassCard" class="scorecard-item"> <!-- Added ID here -->
-                    <div id="pitchClassIcon" class="score-icon fas fa-trophy score-class-default"></div>
-                    <div id="pitchClassValue" class="scorecard-value">--</div>
-                    <div class="scorecard-label">Classe Pitch</div>
-                </div>
-            </div>
-            <div id="noCoreMetricsData" class="hidden text-center text-slate-500 mt-4">Nessun dato di riepilogo disponibile per questo pitch.</div>
-        </section>
+            </header>
 
-        <!-- Sezione Grafico a Barre delle Variabili -->
-        <section class="card lg:col-span-1 flex flex-col">
-            <h2 class="text-2xl font-semibold text-slate-800 mb-4">Punteggi Variabili Valutate</h2>
-            <p class="text-slate-600 mb-6">
-                Questo grafico a barre mostra i punteggi (0-100) assegnati a ciascuna delle 7 variabili chiave del pitch deck selezionato. Punteggi più alti indicano una maggiore forza in quella specifica area. Passa il mouse sulle barre per leggere la motivazione del punteggio.
-            </p>
-            <div class="flex-grow flex items-center justify-center min-h-[300px]">
-                <div class="chart-container">
-                    <canvas id="variablesChart"></canvas>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Sezione: Riepilogo Generale (Scorecard) -->
+                <section class="card lg:col-span-2 mb-8">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-6">Riepilogo Generale del Pitch Deck</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="scorecard-item">
+                            <!-- Material Icon: analytics for chart-line -->
+                            <span id="finalAdjustedScoreIcon" class="score-icon score-class-default">analytics</span>
+                            <div id="finalAdjustedScoreValue" class="scorecard-value">--</div>
+                            <div class="scorecard-label">Score Finale Regolato</div>
+                        </div>
+                        <div class="scorecard-item">
+                            <!-- Material Icon: alt_route for project-diagram -->
+                            <span id="coherenceIndexIcon" class="score-icon score-class-default">alt_route</span>
+                            <div id="coherenceIndexValue" class="scorecard-value">--</div>
+                            <div class="scorecard-label">Indice di Coerenza</div>
+                        </div>
+                        <div id="pitchClassCard" class="scorecard-item">
+                            <!-- Material Icon: emoji_events for trophy -->
+                            <span id="pitchClassIcon" class="score-icon score-class-default">emoji_events</span>
+                            <div id="pitchClassValue" class="scorecard-value">--</div>
+                            <div class="scorecard-label">Classe Pitch</div>
+                        </div>
+                    </div>
+                    <div id="noCoreMetricsData" class="hidden text-center text-slate-500 mt-4">Nessun dato di riepilogo disponibile per questo pitch.</div>
+                </section>
+
+                <!-- Sezione Grafico a Barre delle Variabili -->
+                <section class="card lg:col-span-1 flex flex-col">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Punteggi Variabili Valutate</h3>
+                    <p class="text-slate-600 mb-6">
+                        Questo grafico a barre mostra i punteggi (0-100) assegnati a ciascuna delle 7 variabili chiave del pitch deck selezionato. Passa il mouse sulle barre per leggere la motivazione.
+                    </p>
+                    <div class="flex-grow flex items-center justify-center min-h-[300px]">
+                        <div class="chart-container">
+                            <canvas id="variablesChart"></canvas>
+                        </div>
+                    </div>
+                    <div id="noDataChart" class="hidden text-center text-slate-500 mt-4">Nessun dato disponibile per il grafico.</div>
+                </section>
+
+                <!-- Sezione Tabella Dettagliata Variabili -->
+                <section class="card lg:col-span-1 flex flex-col">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Dettaglio Variabili e Motivazioni</h3>
+                    <p class="text-slate-600 mb-6">
+                        Questa tabella fornisce i punteggi numerici e le motivazioni dettagliate per ogni variabile.
+                    </p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[500px] bg-white rounded-lg overflow-hidden">
+                            <thead>
+                                <tr>
+                                    <th class="py-3 px-4 rounded-tl-lg">Variabile</th>
+                                    <th class="py-3 px-4">Punteggio</th>
+                                    <th class="py-3 px-4 rounded-tr-lg">Motivazione</th>
+                                </tr>
+                            </thead>
+                            <tbody id="variablesTableBody">
+                                <!-- Righe popolate da JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="noDataTable" class="hidden text-center text-slate-500 mt-4">Nessun dato disponibile per la tabella.</div>
+                </section>
+
+                <!-- Nuova Sezione Dettaglio Coerenza con Dropdown -->
+                <section class="card lg:col-span-2 mt-8">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Analisi Coerenza tra Variabili</h3>
+                    <p class="text-slate-600 mb-6">
+                        Seleziona una coppia di variabili per visualizzarne il punteggio di coerenza e la motivazione dettagliata.
+                    </p>
+                    <div class="flex flex-col sm:flex-row items-center sm:space-x-4 mb-4">
+                        <label for="coherencePairSelector" class="text-slate-700 font-medium mb-2 sm:mb-0">Seleziona Coppia:</label>
+                        <select id="coherencePairSelector" class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent w-full sm:w-auto">
+                            <!-- Opzioni popolate da JS -->
+                        </select>
+                    </div>
+                    <div id="coherenceDetails" class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <p class="text-slate-700 font-medium mb-2">Punteggio: <span id="selectedCoherenceScore" class="font-bold">--</span></p>
+                        <p class="text-slate-700">Motivazione: <span id="selectedCoherenceMotivation">Nessuna motivazione disponibile.</span></p>
+                    </div>
+                    <div id="noCoherenceData" class="hidden text-center text-slate-500 mt-4">Nessun dato di coerenza disponibile per questo pitch.</div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Deal Flow: Ranking Investitori -->
+        <div id="dealFlowDashboard" class="flex flex-col w-full hidden">
+            <header class="w-full container-padding mb-8 pt-8">
+                <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-4 sm:mb-0">
+                        Deal Flow: Ranking Pitch per Investitori
+                    </h2>
+                     <div class="flex space-x-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="pitchFilter" value="all" checked class="form-radio text-teal-600 h-5 w-5">
+                            <span class="ml-2 text-slate-700 font-medium">Tutti i Pitch</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="pitchFilter" value="my" class="form-radio text-teal-600 h-5 w-5">
+                            <span class="ml-2 text-slate-700 font-medium">I Miei Pitch</span>
+                        </label>
+                    </div>
                 </div>
-            </div>
-            <div id="noDataChart" class="hidden text-center text-slate-500 mt-4">Nessun dato disponibile per il grafico.</div>
-        </section>
-
-        <!-- Sezione Tabella Dettagliata Variabili -->
-        <section class="card lg:col-span-1 flex flex-col">
-            <h2 class="text-2xl font-semibold text-slate-800 mb-4">Dettaglio Variabili e Motivazioni</h2>
-            <p class="text-slate-600 mb-6">
-                Questa tabella fornisce i punteggi numerici e le motivazioni dettagliate per ogni variabile, offrendo una comprensione più approfondita dell'analisi.
-            </p>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[500px] bg-white rounded-lg overflow-hidden">
-                    <thead>
-                        <tr>
-                            <th class="py-3 px-4 rounded-tl-lg">Variabile</th>
-                            <th class="py-3 px-4">Punteggio</th>
-                            <th class="py-3 px-4 rounded-tr-lg">Motivazione</th>
-                        </tr>
-                    </thead>
-                    <tbody id="variablesTableBody">
-                        <!-- Righe popolate da JS -->
-                    </tbody>
-                </table>
-            </div>
-            <div id="noDataTable" class="hidden text-center text-slate-500 mt-4">Nessun dato disponibile per la tabella.</div>
-        </section>
-
-        <!-- Nuova Sezione: Tabella Dettagliata Coerenza -->
-        <section class="card lg:col-span-2 mt-8">
-            <h2 class="text-2xl font-semibold text-slate-800 mb-4">Analisi Coerenza tra Variabili</h2>
-            <p class="text-slate-600 mb-6">
-                Questa tabella mostra i punteggi di coerenza (0-100) tra le diverse coppie di variabili e le relative motivazioni, evidenziando l'allineamento interno del pitch.
-            </p>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[600px] bg-white rounded-lg overflow-hidden">
-                    <thead>
-                        <tr>
-                            <th class="py-3 px-4 rounded-tl-lg">Coppia di Variabili</th>
-                            <th class="py-3 px-4">Punteggio</th>
-                            <th class="py-3 px-4 rounded-tr-lg">Motivazione</th>
-                        </tr>
-                    </thead>
-                    <tbody id="coherenceTableBody">
-                        <!-- Righe popolate da JS -->
-                    </tbody>
-                </table>
-            </div>
-            <div id="noCoherenceData" class="hidden text-center text-slate-500 mt-4">Nessun dato di coerenza disponibile per questo pitch.</div>
-        </section>
+            </header>
+            
+            <section class="card w-full">
+                <h3 class="text-xl font-semibold text-slate-800 mb-4">Classifica dei Pitch Deck (Score Finale Regolato)</h3>
+                <p class="text-slate-600 mb-6">
+                    Questo grafico mostra tutti i pitch deck analizzati, ordinati in base al loro "Score Finale Regolato" in ordine decrescente. I pitch con i punteggi più alti sono in cima, rappresentando le opportunità più promettenti.
+                </p>
+                <div class="flex-grow flex items-center justify-center min-h-[300px]">
+                    <div class="chart-container">
+                        <canvas id="rankingChart"></canvas>
+                    </div>
+                </div>
+                <div id="noRankingData" class="hidden text-center text-slate-500 mt-4">Nessun dato di ranking disponibile.</div>
+            </section>
+        </div>
     </main>
 
     <!-- Script JavaScript -->
-    <script>
+    <script type="module">
+        // Elementi UI globali
+        const loginSection = document.getElementById('loginSection');
+        const dashboardContent = document.getElementById('dashboardContent');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginButton = document.getElementById('loginButton');
+        const loginError = document.getElementById('loginError');
+        const logoutButton = document.getElementById('logoutButton');
+        const authStatus = document.getElementById('authStatus');
+        const userEmailSpan = document.getElementById('userEmail');
+        const navHome = document.getElementById('navHome');
+        const navDealFlow = document.getElementById('navDealFlow');
+
+        // Sezioni della dashboard
+        const homeDashboard = document.getElementById('homeDashboard');
+        const dealFlowDashboard = document.getElementById('dealFlowDashboard');
+
+        // Elementi della dashboard Home
         const documentSelector = document.getElementById('documentSelector');
         const variablesTableBody = document.getElementById('variablesTableBody');
         const variablesChartCanvas = document.getElementById('variablesChart');
-        const coherenceTableBody = document.getElementById('coherenceTableBody'); // New element
-        const loadingOverlay = document.getElementById('loadingOverlay');
+        // Aggiunti elementi per il dropdown di coerenza
+        const coherencePairSelector = document.getElementById('coherencePairSelector');
+        const selectedCoherenceScore = document.getElementById('selectedCoherenceScore');
+        const selectedCoherenceMotivation = document.getElementById('selectedCoherenceMotivation');
+
         const noDataChartDiv = document.getElementById('noDataChart');
         const noDataTableDiv = document.getElementById('noDataTable');
-        const noCoreMetricsDataDiv = document.getElementById('noCoreMetricsData'); // New element
-        const noCoherenceDataDiv = document.getElementById('noCoherenceData'); // New element
-
-        // Scorecard elements
+        const noCoreMetricsDataDiv = document.getElementById('noCoreMetricsData');
+        const noCoherenceDataDiv = document.getElementById('noCoherenceData');
         const finalAdjustedScoreValue = document.getElementById('finalAdjustedScoreValue');
         const finalAdjustedScoreIcon = document.getElementById('finalAdjustedScoreIcon');
         const coherenceIndexValue = document.getElementById('coherenceIndexValue');
         const coherenceIndexIcon = document.getElementById('coherenceIndexIcon');
         const pitchClassValue = document.getElementById('pitchClassValue');
         const pitchClassIcon = document.getElementById('pitchClassIcon');
-        const pitchClassCard = document.getElementById('pitchClassCard'); // Get the card element
+        const pitchClassCard = document.getElementById('pitchClassCard');
 
-        let variablesChart; // Variabile per tenere traccia dell'istanza del grafico
-        let loadedAllData = {}; // Oggetto per memorizzare i dati recuperati
+        // Elementi della dashboard Deal Flow
+        const rankingChartCanvas = document.getElementById('rankingChart');
+        const noRankingDataDiv = document.getElementById('noRankingData');
+        const pitchFilterRadios = document.querySelectorAll('input[name="pitchFilter"]');
 
-        // Funzione per avvolgere le etichette lunghe
+        // Overlay di caricamento globale
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        let variablesChart; // Istanza del grafico a barre delle variabili
+        let rankingChart;   // Istanza del grafico a barre del ranking
+        let loadedAllData = {}; // Oggetto per memorizzare tutti i dati recuperati dall'API
+
+        // Firebase Auth e Firestore (recuperati dalla window)
+        const auth = window.firebaseAuth;
+        const setPersistence = window.setPersistence;
+        const browserSessionPersistence = window.browserSessionPersistence;
+        const signInWithEmailAndPassword = window.signInWithEmailAndPassword;
+        const signOut = window.signOut;
+        const onAuthStateChanged = window.onAuthStateChanged;
+        const db = window.firebaseDb; // Firestore instance
+        const APP_ID = window.APP_ID; // App ID for Firestore paths
+
+        // Funzione per mostrare una sezione e nascondere le altre
+        function showSection(sectionId) {
+            homeDashboard.classList.add('hidden');
+            dealFlowDashboard.classList.add('hidden');
+            if (sectionId === 'home') {
+                homeDashboard.classList.remove('hidden');
+                // Ricarica la dashboard principale se l'utente è autenticato e ci sono dati
+                // Chiamiamo fetchDataInBothDashboards per assicurarci che loadedAllData sia popolato
+                if (auth.currentUser) {
+                    fetchDataInBothDashboards(auth.currentUser).then(() => {
+                        const selectedDocId = documentSelector.value || Object.keys(loadedAllData)[0];
+                        if (selectedDocId) {
+                            updateMainDashboard(selectedDocId);
+                        } else {
+                            clearMainDashboard();
+                        }
+                    });
+                }
+            } else if (sectionId === 'dealFlow') {
+                dealFlowDashboard.classList.remove('hidden');
+                // Ricarica il ranking se l'utente è autenticato
+                if (auth.currentUser) {
+                    const selectedFilter = document.querySelector('input[name="pitchFilter"]:checked').value;
+                    fetchAndRenderRanking(selectedFilter);
+                }
+            }
+        }
+
+        // Funzione per avvolgere le etichette lunghe nel grafico
         function wrapLabel(label, maxCharPerLine) {
+            if (typeof label !== 'string') return label; // Assicurati che sia una stringa
             if (label.length <= maxCharPerLine) return label;
             let wrappedLabel = [];
             let words = label.split(' ');
@@ -289,64 +472,106 @@
             });
             return wrappedLabel;
         }
+        
+        // Funzione per pulire la dashboard principale
+        function clearMainDashboard() {
+            finalAdjustedScoreValue.textContent = '--';
+            coherenceIndexValue.textContent = '--';
+            pitchClassValue.textContent = '--';
+            finalAdjustedScoreIcon.className = 'score-icon score-class-default';
+            coherenceIndexIcon.className = 'score-icon score-class-default';
+            pitchClassIcon.className = 'score-icon score-class-default';
+            finalAdjustedScoreIcon.textContent = 'analytics';
+            coherenceIndexIcon.textContent = 'alt_route';
+            coherenceIndexIcon.textContent = 'emoji_events'; // Fixed typo here for coherence icon
+            pitchClassIcon.textContent = 'emoji_events';
 
-        // Funzione per aggiornare il grafico e la tabella
-        function updateDashboard(selectedDocumentId) {
+
+            pitchClassCard.classList.remove('bg-class-verde', 'bg-class-giallo', 'bg-class-rosso');
+            pitchClassCard.classList.add('bg-class-default-scorecard');
+            
+            variablesChartCanvas.style.display = 'none';
+            variablesTableBody.innerHTML = '';
+            
+            // Clear coherence dropdown and details
+            coherencePairSelector.innerHTML = '<option value="">Seleziona una coppia</option>';
+            coherencePairSelector.disabled = true;
+            selectedCoherenceScore.textContent = '--';
+            selectedCoherenceMotivation.textContent = 'Nessuna motivazione disponibile.';
+
+            noDataChartDiv.classList.remove('hidden');
+            noDataTableDiv.classList.remove('hidden');
+            noCoreMetricsDataDiv.classList.remove('hidden');
+            noCoherenceDataDiv.classList.remove('hidden');
+
+            noDataChartDiv.textContent = 'Nessun dato disponibile per il grafico.';
+            noDataTableDiv.textContent = 'Nessun dato disponibile per la tabella.';
+            noCoreMetricsDataDiv.textContent = 'Nessun dato di riepilogo disponibile per questo pitch.';
+            noCoherenceDataDiv.textContent = 'Nessun dato di coerenza disponibile per questo pitch.';
+
+            if (variablesChart) {
+                variablesChart.destroy();
+                variablesChart = null;
+            }
+        }
+
+        // Funzione per aggiornare la dashboard principale (variabili dettagliate)
+        function updateMainDashboard(selectedDocumentId) {
             const documentData = loadedAllData[selectedDocumentId];
 
-            // Reset scorecard background classes
-            const scorecardClasses = ['bg-class-verde', 'bg-class-giallo', 'bg-class-rosso', 'bg-class-default-scorecard'];
-            pitchClassCard.classList.remove(...scorecardClasses);
+            if (!documentData) {
+                clearMainDashboard();
+                return;
+            }
 
-
-            // --- Update Core Metrics Scorecards ---
-            if (documentData && documentData.core_metrics) {
+            // Aggiorna le scorecard di riepilogo
+            if (documentData.core_metrics) { // Ora i dati core sono sotto 'core_metrics'
                 const coreMetrics = documentData.core_metrics;
                 finalAdjustedScoreValue.textContent = coreMetrics.final_adjusted_score ? coreMetrics.final_adjusted_score.toFixed(2) : '--';
                 coherenceIndexValue.textContent = coreMetrics.indice_coerenza ? coreMetrics.indice_coerenza.toFixed(2) : '--';
-                pitchClassValue.textContent = coreMetrics.classe_pitch || '--';
+                pitchClassValue.textContent = coreMetrics.classe_pitch || '--'; // 'classe_pitch' da BigQuery
 
-                // Update icon colors based on class
-                finalAdjustedScoreIcon.className = 'score-icon fas fa-chart-line';
-                coherenceIndexIcon.className = 'score-icon fas fa-project-diagram';
-                pitchClassIcon.className = 'score-icon fas fa-trophy';
+                // Reset scorecard background classes
+                const scorecardClasses = ['bg-class-verde', 'bg-class-giallo', 'bg-class-rosso', 'bg-class-default-scorecard'];
+                pitchClassCard.classList.remove(...scorecardClasses);
+
+                // Update icon colors and card background based on class
+                finalAdjustedScoreIcon.className = 'score-icon';
+                coherenceIndexIcon.className = 'score-icon';
+                pitchClassIcon.className = 'score-icon';
+                finalAdjustedScoreIcon.textContent = 'analytics';
+                coherenceIndexIcon.textContent = 'alt_route';
+                pitchClassIcon.textContent = 'emoji_events';
+
 
                 if (coreMetrics.classe_pitch === 'Verde') {
                     finalAdjustedScoreIcon.classList.add('score-class-verde');
                     coherenceIndexIcon.classList.add('score-class-verde');
                     pitchClassIcon.classList.add('score-class-verde');
-                    pitchClassCard.classList.add('bg-class-verde'); // Set background for pitchClassCard
+                    pitchClassCard.classList.add('bg-class-verde');
                 } else if (coreMetrics.classe_pitch === 'Giallo') {
                     finalAdjustedScoreIcon.classList.add('score-class-giallo');
                     coherenceIndexIcon.classList.add('score-class-giallo');
                     pitchClassIcon.classList.add('score-class-giallo');
-                    pitchClassCard.classList.add('bg-class-giallo'); // Set background for pitchClassCard
+                    pitchClassCard.classList.add('bg-class-giallo');
                 } else if (coreMetrics.classe_pitch === 'Rosso') {
                     finalAdjustedScoreIcon.classList.add('score-class-rosso');
                     coherenceIndexIcon.classList.add('score-class-rosso');
                     pitchClassIcon.classList.add('score-class-rosso');
-                    pitchClassCard.classList.add('bg-class-rosso'); // Set background for pitchClassCard
+                    pitchClassCard.classList.add('bg-class-rosso');
                 } else {
                     finalAdjustedScoreIcon.classList.add('score-class-default');
                     coherenceIndexIcon.classList.add('score-class-default');
                     pitchClassIcon.classList.add('score-class-default');
-                    pitchClassCard.classList.add('bg-class-default-scorecard'); // Default background
+                    pitchClassCard.classList.add('bg-class-default-scorecard');
                 }
                 noCoreMetricsDataDiv.classList.add('hidden');
             } else {
-                finalAdjustedScoreValue.textContent = '--';
-                coherenceIndexValue.textContent = '--';
-                pitchClassValue.textContent = '--';
-                finalAdjustedScoreIcon.className = 'score-icon fas fa-chart-line score-class-default';
-                coherenceIndexIcon.className = 'score-icon fas fa-project-diagram score-class-default';
-                pitchClassIcon.className = 'score-icon fas fa-trophy score-class-default';
-                pitchClassCard.classList.add('bg-class-default-scorecard'); // Default background
                 noCoreMetricsDataDiv.classList.remove('hidden');
             }
 
-
-            // --- Update Variables Chart and Table ---
-            if (documentData && documentData.variables && documentData.variables.length > 0) {
+            // Update Variables Chart and Table
+            if (documentData.variables && documentData.variables.length > 0) { // Ora i dati variabili sono sotto 'variables'
                 variablesChartCanvas.style.display = 'block';
                 noDataChartDiv.classList.add('hidden');
                 noDataTableDiv.classList.add('hidden');
@@ -478,109 +703,363 @@
                 if (variablesChart) variablesChart.destroy();
             }
 
-            // --- Update Coherence Table ---
-            if (documentData && documentData.coherence_pairs && documentData.coherence_pairs.length > 0) {
-                coherenceTableBody.innerHTML = '';
-                noCoherenceDataDiv.classList.add('hidden');
-                documentData.coherence_pairs.forEach(cp => {
-                    const row = coherenceTableBody.insertRow();
-                    row.className = 'text-slate-700';
-                    const cellCoppia = row.insertCell();
-                    cellCoppia.textContent = cp.nome_coppia;
-                    const cellPunteggio = row.insertCell();
-                    cellPunteggio.textContent = cp.punteggio_coppia;
-                    const cellMotivazione = row.insertCell();
-                    cellMotivazione.textContent = cp.motivazione_coppia;
+            // Update Coherence Details with Dropdown
+            if (documentData.coherence_pairs && documentData.coherence_pairs.length > 0) { // Ora i dati coerenza sono sotto 'coherence_pairs'
+                coherencePairSelector.innerHTML = '<option value="">Seleziona una coppia</option>'; // Clear existing options
+                documentData.coherence_pairs.forEach((cp, index) => {
+                    const option = document.createElement('option');
+                    option.value = index; // Store index to easily retrieve data
+                    option.textContent = cp.nome_coppia;
+                    coherencePairSelector.appendChild(option);
                 });
+                coherencePairSelector.disabled = false;
+                noCoherenceDataDiv.classList.add('hidden');
+
+                // Select the first item by default and display its details
+                if (documentData.coherence_pairs.length > 0) {
+                    coherencePairSelector.value = 0; // Select the first option
+                    const firstPair = documentData.coherence_pairs[0];
+                    selectedCoherenceScore.textContent = firstPair.punteggio_coppia;
+                    selectedCoherenceMotivation.textContent = firstPair.motivazione_coppia;
+                }
+
+                // Add event listener for the dropdown
+                coherencePairSelector.onchange = (event) => {
+                    const selectedIndex = event.target.value;
+                    if (selectedIndex !== "") {
+                        const selectedPair = documentData.coherence_pairs[selectedIndex];
+                        selectedCoherenceScore.textContent = selectedPair.punteggio_coppia;
+                        selectedCoherenceMotivation.textContent = selectedPair.motivazione_coppia;
+                    } else {
+                        selectedCoherenceScore.textContent = '--';
+                        selectedCoherenceMotivation.textContent = 'Nessuna motivazione disponibile.';
+                    }
+                };
+
             } else {
-                coherenceTableBody.innerHTML = '';
+                coherencePairSelector.innerHTML = '<option value="">Nessun dato di coerenza disponibile</option>';
+                coherencePairSelector.disabled = true;
+                selectedCoherenceScore.textContent = '--';
+                selectedCoherenceMotivation.textContent = 'Nessuna motivazione disponibile.';
                 noCoherenceDataDiv.classList.remove('hidden');
             }
         }
 
-        // Funzione per recuperare i dati da una (ipotetica) API backend
-        async function fetchData() {
+        // Funzione per recuperare tutti i dati della dashboard (Home e Deal Flow) da Cloud Function API
+        async function fetchDataInBothDashboards(user) {
+            if (!user) {
+                console.log("Utente non autenticato. Impossibile recuperare i dati.");
+                loadingOverlay.classList.add('hidden');
+                clearMainDashboard();
+                return;
+            }
+
             loadingOverlay.classList.remove('hidden'); // Mostra overlay di caricamento
+
             try {
-                const response = await fetch('https://europe-west1-validatr-mvp.cloudfunctions.net/fetchData'); 
+                const token = await user.getIdToken();
+                // Questo è l'URL della tua Cloud Function API che aggrega i dati da BigQuery
+                const apiUrl = `https://europe-west1-validatr-mvp.cloudfunctions.net/fetchPitchData`; 
+                
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }); 
+                
                 if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        console.error("Accesso API negato. Potresti non avere i permessi o il token è scaduto.");
+                        await signOut(auth); // Forza il logout
+                        return;
+                    }
                     throw new Error(`Errore HTTP! Stato: ${response.status}`);
                 }
                 const data = await response.json();
+                loadedAllData = data; // Popola loadedAllData con tutti i dati
 
-                // Se la logica di filtraggio sopra è commentata, assegna tutti i dati
-                if (Object.keys(loadedAllData).length === 0) { // Controlla se loadedAllData è ancora vuoto dopo il filtro opzionale
-                    loadedAllData = data; 
-                }
-
-                // Popola il selettore dei documenti
-                documentSelector.innerHTML = ''; // Pulisci le opzioni esistenti
+                // Popola il selettore documenti per la Home Dashboard
+                documentSelector.innerHTML = '';
                 if (Object.keys(loadedAllData).length === 0) {
                      const option = document.createElement('option');
                      option.value = '';
                      option.textContent = 'Nessun Pitch Deck disponibile';
                      documentSelector.appendChild(option);
-                     documentSelector.disabled = true; // Disabilita il selettore se non ci sono dati
+                     documentSelector.disabled = true;
+                     clearMainDashboard(); // Assicurati che la dashboard Home sia vuota
                 } else {
                     documentSelector.disabled = false;
-                    for (const docId in loadedAllData) {
+                    const sortedDocIds = Object.keys(loadedAllData).sort((a, b) => a.localeCompare(b));
+                    sortedDocIds.forEach(docId => {
                         const option = document.createElement('option');
                         option.value = docId;
-                        // Estrae solo il nome del documento dal percorso completo se document_name non è esplicito
-                        option.textContent = (loadedAllData[docId].document_name || docId).split('/').pop();
+                        option.textContent = loadedAllData[docId].document_name || docId; // Usa document_name dalla API
                         documentSelector.appendChild(option);
-                    }
-                }
-
-                // Carica la dashboard con il primo documento di default all'avvio
-                if (Object.keys(loadedAllData).length > 0) {
-                    documentSelector.value = Object.keys(loadedAllData)[0];
-                    updateDashboard(documentSelector.value);
-                } else {
-                    updateDashboard(null); // Nessun dato da mostrare
+                    });
+                     if (sortedDocIds.length > 0) {
+                        documentSelector.value = sortedDocIds[0];
+                        updateMainDashboard(sortedDocIds[0]); // Mostra il primo documento al caricamento
+                     }
                 }
 
             } catch (error) {
-                console.error("Errore durante il recupero dei dati:", error);
-                // Aggiorna tutti i messaggi di "nessun dato"
-                noDataChartDiv.classList.remove('hidden');
-                noDataTableDiv.classList.remove('hidden');
-                noCoreMetricsDataDiv.classList.remove('hidden');
-                noCoherenceDataDiv.classList.remove('hidden');
-
-                noDataChartDiv.textContent = 'Errore nel caricamento dei dati: ' + error.message + '. Verifica la console per dettagli.';
-                noDataTableDiv.textContent = 'Errore nel caricamento dei dati: ' + error.message + '. Verifica la console per dettagli.';
-                noCoreMetricsDataDiv.textContent = 'Errore nel caricamento dei dati: ' + error.message + '. Verifica la console per dettagli.';
-                noCoherenceDataDiv.textContent = 'Errore nel caricamento dei dati: ' + error.message + '. Verifica la console per dettagli.';
-
-                if (variablesChart) variablesChart.destroy();
-                // Reset scorecard values and backgrounds
-                finalAdjustedScoreValue.textContent = '--';
-                coherenceIndexValue.textContent = '--';
-                pitchClassValue.textContent = '--';
-                finalAdjustedScoreIcon.className = 'score-icon fas fa-chart-line score-class-default';
-                coherenceIndexIcon.className = 'score-icon fas fa-project-diagram score-class-default';
-                pitchClassIcon.className = 'score-icon fas fa-trophy score-class-default';
-                // Ensure default background is applied on error
-                pitchClassCard.classList.remove(...scorecardClasses); // Remove all dynamic classes
-                pitchClassCard.classList.add('bg-class-default-scorecard'); // Add default
+                console.error("Errore durante il recupero dei dati da Cloud Function API:", error);
+                // Puoi mostrare un messaggio di errore sulla dashboard qui
+                clearMainDashboard();
             } finally {
                 loadingOverlay.classList.add('hidden'); // Nasconde overlay di caricamento
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Load Font Awesome Kit
-            const faScript = document.createElement('script');
-            faScript.src = "https://kit.fontawesome.com/a076d05399.js"; // Replace with your Font Awesome kit URL if different
-            faScript.crossOrigin = "anonymous";
-            document.head.appendChild(faScript);
 
-            documentSelector.addEventListener('change', (event) => {
-                updateDashboard(event.target.value);
+        // Funzione per renderizzare la dashboard di ranking (usa i dati già caricati)
+        async function fetchAndRenderRanking(filterType = 'all') {
+            const user = auth.currentUser;
+            if (!user) {
+                console.log("Utente non autenticato. Impossibile recuperare i dati per il ranking.");
+                noRankingDataDiv.classList.remove('hidden');
+                noRankingDataDiv.textContent = 'Accedi per visualizzare la dashboard.';
+                if (rankingChart) rankingChart.destroy();
+                return;
+            }
+
+            // Assicurati che loadedAllData sia popolato prima di filtrare
+            if (Object.keys(loadedAllData).length === 0) {
+                await fetchDataInBothDashboards(user); // Carica i dati se non sono già stati caricati
+            }
+            
+            const rankingData = [];
+            for (const docId in loadedAllData) {
+                const doc = loadedAllData[docId];
+                // Applica il filtro se 'my' è selezionato
+                if (filterType === 'my' && doc.core_metrics && doc.core_metrics.userId !== user.uid) {
+                    continue; // Salta i documenti che non sono dell'utente corrente
+                }
+
+                if (doc.core_metrics && doc.core_metrics.final_adjusted_score !== undefined) {
+                    rankingData.push({
+                        name: doc.document_name || docId, // Usa document_name dalla API
+                        score: doc.core_metrics.final_adjusted_score
+                    });
+                }
+            }
+
+            // Ordina in ordine decrescente per score (i "vincitori" in alto)
+            rankingData.sort((a, b) => b.score - a.score);
+
+            if (rankingData.length === 0) {
+                rankingChartCanvas.style.display = 'none';
+                noRankingDataDiv.classList.remove('hidden');
+                noRankingDataDiv.textContent = `Nessun dato di ranking disponibile per "${filterType === 'all' ? 'tutti i pitch' : 'i tuoi pitch'}".`;
+                if (rankingChart) rankingChart.destroy();
+                return;
+            } else {
+                rankingChartCanvas.style.display = 'block';
+                noRankingDataDiv.classList.add('hidden');
+            }
+
+            const labels = rankingData.map(item => item.name);
+            const scores = rankingData.map(item => item.score);
+
+            // Definisci i colori delle barre in base alla posizione nel ranking
+            const backgroundColors = [];
+            const borderColors = [];
+            const numItems = rankingData.length;
+
+            for (let i = 0; i < numItems; i++) {
+                if (i === 0) { // Primo classificato (verde più brillante)
+                    backgroundColors.push('#34D399'); // Emerald-400
+                    borderColors.push('#059669'); // Emerald-600
+                } else if (i === 1) { // Secondo classificato (verde medio)
+                    backgroundColors.push('#10B981'); // Emerald-500
+                    borderColors.push('#047857'); // Emerald-700
+                } else if (i === 2) { // Terzo classificato (verde più scuro)
+                    backgroundColors.push('#059669'); // Emerald-600
+                    borderColors.push('#065F46'); // Emerald-800
+                } else if (i >= numItems - 3 && numItems > 3) { // Ultimi 3 (se ci sono più di 3 elementi in totale)
+                    if (i === numItems - 1) { // Ultimo classificato (rosso scuro)
+                        backgroundColors.push('#B91C1C'); // Red-800
+                        borderColors.push('#7F1D1D'); // Red-900
+                    } else if (i === numItems - 2) { // Penultimo (rosso medio)
+                        backgroundColors.push('#EF4444'); // Red-500
+                        borderColors.push('#DC2626'); // Red-600
+                    } else { // Terzultimo (rosso chiaro)
+                        backgroundColors.push('#F87171'); // Red-400
+                        borderColors.push('#EF4444'); // Red-500
+                    }
+                } else { // Tutti gli altri (giallo)
+                    backgroundColors.push('#FBBF24'); // Amber-400
+                    borderColors.push('#F59E0B'); // Amber-500
+                }
+            }
+
+            // Aggiorna o crea il Grafico a Barre Orizzontali
+            if (rankingChart) {
+                rankingChart.data.labels = labels;
+                rankingChart.data.datasets[0].data = scores;
+                rankingChart.data.datasets[0].backgroundColor = backgroundColors;
+                rankingChart.data.datasets[0].borderColor = borderColors;
+                rankingChart.update();
+            } else {
+                const ctx = rankingChartCanvas.getContext('2d');
+                rankingChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Score Finale Regolato',
+                            data: scores,
+                            backgroundColor: backgroundColors, 
+                            borderColor: borderColors, 
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y', // Grafico a barre orizzontali
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false // Non mostrare la legenda
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${context.parsed.x.toFixed(2)}`;
+                                    }
+                                }
+                            },
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: 100, // Il punteggio massimo è 100
+                                title: {
+                                    display: true,
+                                    text: 'Score Finale Regolato (0-100)',
+                                    color: '#475569'
+                                },
+                                ticks: {
+                                    color: '#475569'
+                                },
+                                grid: {
+                                    color: '#e2e8f0'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Pitch Deck',
+                                    color: '#475569'
+                                },
+                                ticks: {
+                                    color: '#475569'
+                                },
+                                grid: {
+                                    color: '#e2e8f0'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Gestione Autenticazione Firebase
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    console.log("Utente loggato:", user.email);
+                    userEmailSpan.textContent = user.email;
+                    authStatus.classList.remove('hidden');
+                    loginSection.classList.add('hidden');
+                    dashboardContent.classList.remove('hidden');
+                    loginError.classList.add('hidden');
+
+                    // Al login, recupera tutti i dati dalla Cloud Function API
+                    await fetchDataInBothDashboards(user);
+                    
+                    // Mostra la dashboard Home per default al login
+                    showSection('home'); 
+
+                } else {
+                    console.log("Utente disconnesso.");
+                    authStatus.classList.add('hidden');
+                    loginSection.classList.remove('hidden');
+                    dashboardContent.classList.add('hidden');
+                    // Distruggi i grafici se l'utente si disconnette
+                    if (variablesChart) { variablesChart.destroy(); variablesChart = null; }
+                    if (rankingChart) { rankingChart.destroy(); rankingChart = null; }
+                    clearMainDashboard(); // Pulisci la dashboard Home
+                    loadedAllData = {}; // Svuota i dati caricati
+                }
             });
 
-            fetchData(); // Avvia il recupero dei dati all'avvio
+            loginButton.addEventListener('click', async () => {
+                const email = emailInput.value;
+                const password = passwordInput.value;
+                loginError.classList.add('hidden');
+
+                if (!email || !password) {
+                    loginError.textContent = 'Inserisci email e password.';
+                    loginError.classList.remove('hidden');
+                    return;
+                }
+
+                try {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } catch (error) {
+                    console.error("Errore di accesso:", error);
+                    let errorMessage = 'Errore di accesso. Riprova.';
+                    switch (error.code) {
+                        case 'auth/invalid-email': errorMessage = 'Email non valida.'; break;
+                        case 'auth/user-disabled': errorMessage = 'Questo utente è stato disabilitato.'; break;
+                        case 'auth/user-not-found':
+                        case 'auth/wrong-password': errorMessage = 'Credenziali non valide.'; break;
+                        case 'auth/too-many-requests': errorMessage = 'Troppi tentativi falliti. Riprova più tardi.'; break;
+                        default: errorMessage = `Errore: ${error.message}`; break;
+                    }
+                    loginError.textContent = errorMessage;
+                    loginError.classList.remove('hidden');
+                }
+            });
+
+            logoutButton.addEventListener('click', async () => {
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error("Errore durante il logout:", error);
+                }
+            });
+
+            // Gestione Navigazione
+            navHome.addEventListener('click', (event) => {
+                event.preventDefault();
+                showSection('home');
+            });
+
+            navDealFlow.addEventListener('click', (event) => {
+                event.preventDefault();
+                showSection('dealFlow');
+            });
+
+            // Listener per il cambio dei radio button nel Deal Flow
+            pitchFilterRadios.forEach(radio => {
+                radio.addEventListener('change', (event) => {
+                    if (auth.currentUser) {
+                        fetchAndRenderRanking(event.target.value);
+                    }
+                });
+            });
+
+            // Listener per il cambio del documento nel Document Selector (Home Dashboard)
+            documentSelector.addEventListener('change', (event) => {
+                if (auth.currentUser) {
+                    updateMainDashboard(event.target.value);
+                }
+            });
         });
     </script>
 </body>
