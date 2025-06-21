@@ -192,9 +192,12 @@
     <!-- Intestazione Principale e Barra di Navigazione -->
     <header class="w-full bg-white shadow-lg border-b border-slate-200 fixed top-0 z-20">
         <div class="container-padding mx-auto py-4 flex flex-col sm:flex-row items-center justify-between">
-            <h1 class="text-3xl font-bold text-slate-900 mb-4 sm:mb-0">
-                VALIDATR™
-            </h1>
+            <div class="flex items-center mb-4 sm:mb-0">
+                <img src="https://storage.googleapis.com/validatr-statics-assets/logo2.PNG" alt="VALIDATR Logo" class="h-10 w-10 mr-3 rounded-md">
+                <h1 class="text-3xl font-bold text-slate-900">
+                    VALIDATR™
+                </h1>
+            </div>
             <nav class="flex space-x-6 mb-4 sm:mb-0">
                 <a href="#" id="navHome" class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600">Home (Dashboard Dettagliata)</a>
                 <a href="#" id="navDealFlow" class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600">Deal Flow (Ranking Investitori)</a>
@@ -336,11 +339,7 @@
                     </h2>
                      <div class="flex space-x-4">
                         <label class="inline-flex items-center">
-                            <input type="radio" name="pitchFilter" value="all" checked class="form-radio text-teal-600 h-5 w-5">
-                            <span class="ml-2 text-slate-700 font-medium">Tutti i Pitch</span>
-                        </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="pitchFilter" value="my" class="form-radio text-teal-600 h-5 w-5">
+                            <input type="radio" name="pitchFilter" value="my" checked class="form-radio text-teal-600 h-5 w-5">
                             <span class="ml-2 text-slate-700 font-medium">I Miei Pitch</span>
                         </label>
                     </div>
@@ -444,10 +443,10 @@
                 }
             } else if (sectionId === 'dealFlow') {
                 dealFlowDashboard.classList.remove('hidden');
-                // Ricarica il ranking se l'utente è autenticato
+                // Ricarica il ranking se l'utente è autenticato. Ora recupera sempre "my" pitch.
                 if (auth.currentUser) {
-                    const selectedFilter = document.querySelector('input[name="pitchFilter"]:checked').value;
-                    fetchAndRenderRanking(selectedFilter);
+                    // Non c'è più bisogno di leggere il valore del radio button, sarà sempre "my"
+                    fetchAndRenderRanking('my'); 
                 }
             }
         }
@@ -483,7 +482,6 @@
             pitchClassIcon.className = 'score-icon score-class-default';
             finalAdjustedScoreIcon.textContent = 'analytics';
             coherenceIndexIcon.textContent = 'alt_route';
-            coherenceIndexIcon.textContent = 'emoji_events'; // Fixed typo here for coherence icon
             pitchClassIcon.textContent = 'emoji_events';
 
 
@@ -524,12 +522,12 @@
                 return;
             }
 
-            // Aggiorna le scorecard di riepilogo
-            if (documentData.core_metrics) { // Ora i dati core sono sotto 'core_metrics'
+            // Aggiorna le scorecard di riepilogo (usa calcoli_aggiuntivi)
+            if (documentData.core_metrics) {
                 const coreMetrics = documentData.core_metrics;
                 finalAdjustedScoreValue.textContent = coreMetrics.final_adjusted_score ? coreMetrics.final_adjusted_score.toFixed(2) : '--';
                 coherenceIndexValue.textContent = coreMetrics.indice_coerenza ? coreMetrics.indice_coerenza.toFixed(2) : '--';
-                pitchClassValue.textContent = coreMetrics.classe_pitch || '--'; // 'classe_pitch' da BigQuery
+                pitchClassValue.textContent = coreMetrics.classe_pitch || '--'; // Usa 'classe_pitch' da Firestore
 
                 // Reset scorecard background classes
                 const scorecardClasses = ['bg-class-verde', 'bg-class-giallo', 'bg-class-rosso', 'bg-class-default-scorecard'];
@@ -570,8 +568,8 @@
                 noCoreMetricsDataDiv.classList.remove('hidden');
             }
 
-            // Update Variables Chart and Table
-            if (documentData.variables && documentData.variables.length > 0) { // Ora i dati variabili sono sotto 'variables'
+            // Update Variables Chart and Table (usa variabili_valutate)
+            if (documentData.variables && documentData.variables.length > 0) {
                 variablesChartCanvas.style.display = 'block';
                 noDataChartDiv.classList.add('hidden');
                 noDataTableDiv.classList.add('hidden');
@@ -689,11 +687,11 @@
                     const row = variablesTableBody.insertRow();
                     row.className = 'text-slate-700';
                     const cellNome = row.insertCell();
-                    cellNome.textContent = v.nome_variabile;
+                    cellNome.textContent = v.nome_variabile; // Usa 'nome_variabile' da Firestore
                     const cellPunteggio = row.insertCell();
-                    cellPunteggio.textContent = v.punteggio_variabile;
+                    cellPunteggio.textContent = v.punteggio_variabile; // Usa 'punteggio_variabile' da Firestore
                     const cellMotivazione = row.insertCell();
-                    cellMotivazione.textContent = v.motivazione_variabile;
+                    cellMotivazione.textContent = v.motivazione_variabile; // Usa 'motivazione_variabile' da Firestore
                 });
             } else {
                 variablesChartCanvas.style.display = 'none';
@@ -703,13 +701,13 @@
                 if (variablesChart) variablesChart.destroy();
             }
 
-            // Update Coherence Details with Dropdown
-            if (documentData.coherence_pairs && documentData.coherence_pairs.length > 0) { // Ora i dati coerenza sono sotto 'coherence_pairs'
+            // Update Coherence Details with Dropdown (usa coerenza_coppie)
+            if (documentData.coherence_pairs && documentData.coherence_pairs.length > 0) {
                 coherencePairSelector.innerHTML = '<option value="">Seleziona una coppia</option>'; // Clear existing options
                 documentData.coherence_pairs.forEach((cp, index) => {
                     const option = document.createElement('option');
                     option.value = index; // Store index to easily retrieve data
-                    option.textContent = cp.nome_coppia;
+                    option.textContent = cp.nome_coppia; // Usa 'nome_coppia' da Firestore
                     coherencePairSelector.appendChild(option);
                 });
                 coherencePairSelector.disabled = false;
@@ -719,8 +717,8 @@
                 if (documentData.coherence_pairs.length > 0) {
                     coherencePairSelector.value = 0; // Select the first option
                     const firstPair = documentData.coherence_pairs[0];
-                    selectedCoherenceScore.textContent = firstPair.punteggio_coppia;
-                    selectedCoherenceMotivation.textContent = firstPair.motivazione_coppia;
+                    selectedCoherenceScore.textContent = firstPair.punteggio_coppia; // Usa 'punteggio_coppia' da Firestore
+                    selectedCoherenceMotivation.textContent = firstPair.motivazione_coppia; // Usa 'motivazione_coppia' da Firestore
                 }
 
                 // Add event listener for the dropdown
@@ -759,6 +757,7 @@
             try {
                 const token = await user.getIdToken();
                 // Questo è l'URL della tua Cloud Function API che aggrega i dati da BigQuery
+                // Aggiornato per puntare alla tua funzione 'fetchPitchData'
                 const apiUrl = `https://europe-west1-validatr-mvp.cloudfunctions.net/fetchPitchData`; 
                 
                 const response = await fetch(apiUrl, {
@@ -776,6 +775,7 @@
                     throw new Error(`Errore HTTP! Stato: ${response.status}`);
                 }
                 const data = await response.json();
+
                 loadedAllData = data; // Popola loadedAllData con tutti i dati
 
                 // Popola il selettore documenti per la Home Dashboard
@@ -793,7 +793,8 @@
                     sortedDocIds.forEach(docId => {
                         const option = document.createElement('option');
                         option.value = docId;
-                        option.textContent = loadedAllData[docId].document_name || docId; // Usa document_name dalla API
+                        // Utilizza document_name se presente, altrimenti l'ID
+                        option.textContent = loadedAllData[docId].document_name || docId; 
                         documentSelector.appendChild(option);
                     });
                      if (sortedDocIds.length > 0) {
@@ -813,10 +814,11 @@
 
 
         // Funzione per renderizzare la dashboard di ranking (usa i dati già caricati)
-        async function fetchAndRenderRanking(filterType = 'all') {
+        async function fetchAndRenderRanking(filterType = 'my') { // filterType sarà sempre 'my'
             const user = auth.currentUser;
             if (!user) {
                 console.log("Utente non autenticato. Impossibile recuperare i dati per il ranking.");
+                loadingOverlay.classList.add('hidden');
                 noRankingDataDiv.classList.remove('hidden');
                 noRankingDataDiv.textContent = 'Accedi per visualizzare la dashboard.';
                 if (rankingChart) rankingChart.destroy();
@@ -831,14 +833,13 @@
             const rankingData = [];
             for (const docId in loadedAllData) {
                 const doc = loadedAllData[docId];
-                // Applica il filtro se 'my' è selezionato
-                if (filterType === 'my' && doc.core_metrics && doc.core_metrics.userId !== user.uid) {
-                    continue; // Salta i documenti che non sono dell'utente corrente
-                }
+                // Ora il filtro è implicito: recuperiamo solo i pitch dell'utente autenticato dal backend.
+                // Non è più necessario filtrare qui con `doc.calcoli_aggiuntivi.userId !== user.uid`
+                // perché la funzione Cloud Function fetchPitchData già lo fa.
 
                 if (doc.core_metrics && doc.core_metrics.final_adjusted_score !== undefined) {
                     rankingData.push({
-                        name: doc.document_name || docId, // Usa document_name dalla API
+                        name: doc.document_name || docId, // Usa document_name o docId
                         score: doc.core_metrics.final_adjusted_score
                     });
                 }
@@ -850,7 +851,7 @@
             if (rankingData.length === 0) {
                 rankingChartCanvas.style.display = 'none';
                 noRankingDataDiv.classList.remove('hidden');
-                noRankingDataDiv.textContent = `Nessun dato di ranking disponibile per "${filterType === 'all' ? 'tutti i pitch' : 'i tuoi pitch'}".`;
+                noRankingDataDiv.textContent = `Nessun dato di ranking disponibile per i tuoi pitch.`; // Messaggio specifico
                 if (rankingChart) rankingChart.destroy();
                 return;
             } else {
@@ -951,8 +952,8 @@
                                     display: true,
                                     text: 'Pitch Deck',
                                     color: '#475569'
-                                },
-                                ticks: {
+                                    },
+                                    ticks: {
                                     color: '#475569'
                                 },
                                 grid: {
@@ -1045,11 +1046,13 @@
                 showSection('dealFlow');
             });
 
-            // Listener per il cambio dei radio button nel Deal Flow
+            // Listener per il cambio dei radio button nel Deal Flow (ora solo "my" è presente)
+            // Non è più necessario un listener che legga il valore,
+            // ma lo manteniamo se in futuro si volesse aggiungere altra logica.
             pitchFilterRadios.forEach(radio => {
                 radio.addEventListener('change', (event) => {
                     if (auth.currentUser) {
-                        fetchAndRenderRanking(event.target.value);
+                        fetchAndRenderRanking('my'); // Chiama sempre con 'my'
                     }
                 });
             });
