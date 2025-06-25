@@ -1,3 +1,5 @@
+# main.py della tua Cloud Function 'process-pitch-deck' (trigger Cloud Storage)
+
 import functions_framework
 import json
 import io
@@ -74,7 +76,7 @@ RUBRICS = {
     },
     "Ritorno Atteso": {
         "descrizione": "Perché dovrebbero finanziarti?",
-        "criteri": "Stima numericamente l’attrattivit\u00E0 finanziaria della startup dal punto di vista degli investitori professionali, utilizzando modelli predittivi rigorosi come IRR (Internal Rate of Return), moltiplicatori attesi e diluizione equity. Variabili valutate: IRR stimato, multipli di investimento, equity post-diluizione, comparabilità con benchmark di mercato, giustificazione oggettiva della valuation richiesta."
+        "criteri": "Stima numericamente l’attrattività finanziaria della startup dal punto di vista degli investitori professionali, utilizzando modelli predittivi rigorosi come IRR (Internal Rate of Return), moltiplicatori attesi e diluizione equity. Variabili valutate: IRR stimato, multipli di investimento, equity post-diluizione, comparabilità con benchmark di mercato, giustificazione oggettiva della valuation richiesta."
     }
 }
 
@@ -94,7 +96,16 @@ COHERENCE_PAIRS = [
 
 # --- Funzione per l'Analisi con GPT ---
 def analyze_pitch_deck_with_gpt(pitch_text):
-    system_prompt_content = """Sei un analista esperto di pitch deck per startup. Il tuo compito è valutare un pitch deck fornito, identificare 7 variabili chiave, assegnare un punteggio da 0 a 100 a ciascuna variabile basandoti sulle rubriche fornite, fornire una motivazione dettagliata per ogni punteggio, e valutare la coerenza interna tra specifiche coppie di variabili. Restituisci tutte le informazioni in un formato JSON valido.
+    # Rubrica per i punteggi (0-100) aggiornata per il prompt di GPT
+    rubrica_prompt = """
+**Rubrica per i punteggi (0-100):**
+- 0-40: Mancante o completamente irrilevante.
+- 40-55: Presente ma estremamente debole, vago o incoerente.
+- 55-77: Buono, chiaro e convincente, con piccoli margini di miglioramento.
+- 77-100: Eccellente, altamente credibile, ben articolato e supportato da dettagli solidi.
+"""
+
+    system_prompt_content = f"""Sei un analista esperto di pitch deck per startup. Il tuo compito è valutare un pitch deck fornito, identificare 7 variabili chiave, assegnare un punteggio da 0 a 100 a ciascuna variabile basandoti sulle rubriche fornite, fornire una motivazione dettagliata per ogni punteggio, e valutare la coerenza interna tra specifiche coppie di variabili. Restituisci tutte le informazioni in un formato JSON valido.
 
 Un pitch deck è un documento che fornisce una panoramica completa del business di una startup. Le 7 variabili chiave vengono tipicamente presentate e approfondite nel PDF con queste modalità:
 - **Problema**: Viene individuato e evidenziato tramite analisi o interviste a clienti reali, mostrando la sua urgenza e rilevanza.
@@ -105,12 +116,7 @@ Un pitch deck è un documento che fornisce una panoramica completa del business 
 - **Team**: Si presenta chi sono i membri fondatori e del team, per generare fiducia e dimostrare la capacità esecutiva.
 - **MVP**: Viene descritto il Minimum Viable Product, la prova tangibile della sua promessa della startup, sufficientemente maturo per i test.
 
-**Rubrica per i punteggi (0-100):**
-- 0-20: Mancante o completamente irrilevante.
-- 21-40: Presente ma estremamente debole, vago o incoerente.
-- 41-60: Accettabile ma con gravi lacune, ambiguità o necessità di maggiori dettagli.
-- 61-80: Buono, chiaro e convincente, con piccoli margini di miglioramento.
-- 81-100: Eccellente, altamente credibile, ben articolato e supportato da dettagli solidi.
+{rubrica_prompt}
 
 Per ogni variabile, valuta il punteggio (0-100) e la motivazione basandoti su questi criteri:
 """
@@ -239,16 +245,16 @@ def perform_additional_calculations(gpt_analysis_data):
     # 3. Calcolo dello Z-score.
     z_score = None # Implementare quando avrai un dataset storico
 
-    # 4. Assegnazione della Classe (Rosso, Giallo, Verde, Immunizzato, Zero)
-    startup_class = "Non Classificato"
-    if final_adjusted_score >= 85: # Soglia per "Verde"
-        startup_class = "Verde"
-    elif final_adjusted_score >= 65: # Soglia per "Giallo"
-        startup_class = "Giallo"
-    elif final_adjusted_score >= 40: # Soglia per "Rosso"
-        startup_class = "Rosso"
-    elif final_adjusted_score > 0:
-        startup_class = "Zero" # Per punteggi bassi ma non nulli
+    # 4. Assegnazione della Classe (INVESTIRE, MONITORARE, VERIFICARE, PASS)
+    startup_class = "NON CLASSIFICATO" # Default
+    if final_adjusted_score >= 77:
+        startup_class = "INVESTIRE"
+    elif final_adjusted_score >= 63:
+        startup_class = "MONITORARE"
+    elif final_adjusted_score >= 40:
+        startup_class = "VERIFICARE"
+    else: # Per punteggi inferiori a 40
+        startup_class = "PASS" # "Pass" come in "Passare oltre, non investire"
 
     print(f"Classe Assegnata: {startup_class}")
 
@@ -286,21 +292,36 @@ def save_to_firestore(document_id, data, user_id=None): # Aggiunto user_id come 
 # --- Nuova funzione per recuperare e aggregare i dati da BigQuery per la dashboard ---
 @functions_framework.http
 def get_dashboard_data(request):
-    # Gestione delle richieste OPTIONS per CORS pre-flight
-    if request.method == 'OPTIONS':
-        headers = {
-            'Access-Control-Allow-Origin': '*', # In produzione, sostituisci con 'https://validatr-mvp.web.app'
-            'Access-Control-Allow-Methods': 'GET, POST',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-            'Access-Control-Max-Age': '3600'
-        }
-        return ('', 204, headers)
+    # Recupera l'origine della richiesta
+    request_origin = request.headers.get('Origin')
 
-    # Imposta gli header CORS per le richieste reali (GET/POST)
+    # Configura gli header CORS
     headers = {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*', # In produzione, sostituisci con 'https://validatr-mvp.web.app'
+        'Access-Control-Allow-Methods': 'GET, POST', # Aggiungi i metodi permessi
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization', # Permetti header Authorization
+        'Access-Control-Max-Age': '3600' # Opzionale: cache per pre-flight requests
     }
+
+    # Logica per impostare Access-Control-Allow-Origin
+    # In ambiente di sviluppo locale, puoi permettere localhost o altre origini specifiche
+    if request_origin and ("localhost" in request_origin or "127.0.0.1" in request_origin):
+        headers['Access-Control-Allow-Origin'] = request_origin
+        print(f"DEBUG: Impostato Access-Control-Allow-Origin a origine locale: {request_origin}")
+    else:
+        # In produzione, specifica il dominio della tua app React su Firebase Hosting
+        headers['Access-Control-Allow-Origin'] = 'https://validatr-mvp.web.app'
+        print(f"DEBUG: Impostato Access-Control-Allow-Origin a dominio di produzione: {headers['Access-Control-Allow-Origin']}")
+        # Per test, potresti temporaneamente usare '*' ma NON farlo in produzione per motivi di sicurezza
+        # headers['Access-Control-Allow-Origin'] = '*'
+
+
+    # Gestione delle richieste OPTIONS per CORS pre-flight
+    if request.method == 'OPTIONS':
+        return ('', 204, headers) # Restituisce una risposta vuota con solo gli header
+
+    # Imposta gli header CORS per le richieste reali (GET/POST)
+    # L'header Access-Control-Allow-Origin è già impostato sopra
 
     try:
         # Autenticazione dell'utente tramite Firebase ID Token
@@ -318,8 +339,8 @@ def get_dashboard_data(request):
             print(f"Errore nella verifica del token Firebase: {e}")
             return json.dumps({"error": f"Invalid Firebase ID token: {e}"}), 403, headers
 
-        # Ottieni il parametro di filtro dalla richiesta
-        filter_type = request.args.get('filter', 'all') # 'all' o 'my'
+        # Ottieni il parametro di filtro dalla richiesta (rimosso dalla logica precedente)
+        # filter_type = request.args.get('filter', 'all') 
 
         all_grouped_data = {}
     
@@ -328,6 +349,12 @@ def get_dashboard_data(request):
         DATASET_ID = "validatr_analyses_dataset"
         
         # --- Recupera e raggruppa i dati da calcoli_aggiuntivi_view ---
+        # Poiché l'HTML è stato ripristinato alla versione che usa le chiamate API
+        # dobbiamo ripristinare la logica che legge da BigQuery VIEWS.
+        # Ho rimosso l'integrazione di Firestore diretta per questa funzione API
+        # e aggiunto le query per le viste BigQuery.
+        
+        # Query per calcoli_aggiuntivi_view
         query_core = f"""
         SELECT
             document_id,
@@ -337,15 +364,15 @@ def get_dashboard_data(request):
             final_adjusted_score,
             z_score,
             indice_coerenza,
-            userId -- Aggiungi userId dalla vista
+            userId
         FROM
             `{PROJECT_ID}.{DATASET_ID}.calcoli_aggiuntivi_view`
         """
         rows_core = bq_client.query(query_core).result()
         for row in rows_core:
             doc_id = row.document_id
-            # Applica il filtro 'my' qui per includere solo i pitch dell'utente corrente
-            if filter_type == 'my' and row.userId != uid:
+            # Filtra per l'utente autenticato (solo i miei pitch)
+            if row.userId != uid:
                 continue
 
             if doc_id not in all_grouped_data:
@@ -361,10 +388,10 @@ def get_dashboard_data(request):
                 "final_adjusted_score": row.final_adjusted_score,
                 "z_score": row.z_score,
                 "indice_coerenza": row.indice_coerenza,
-                "userId": row.userId # Includi userId nelle metriche core
+                "userId": row.userId
             }
     
-        # --- Recupera e raggruppa i dati da valutazione_pitch_view ---
+        # Query per valutazione_pitch_view
         query_vars = f"""
         SELECT
             document_id,
@@ -377,15 +404,14 @@ def get_dashboard_data(request):
         rows_vars = bq_client.query(query_vars).result()
         for row in rows_vars:
             doc_id = row.document_id
-            # Includi solo i documenti che sono già stati filtrati e inclusi da core_metrics
-            if doc_id in all_grouped_data:
+            if doc_id in all_grouped_data: # Includi solo i documenti già filtrati per l'utente
                 all_grouped_data[doc_id]["variables"].append({
                     "nome_variabile": row.nome_variabile,
                     "punteggio_variabile": row.punteggio_variabile,
                     "motivazione_variabile": row.motivazione_variabile
                 })
     
-        # --- Recupera e raggruppa i dati da pitch_coherence_view ---
+        # Query per pitch_coherence_view
         query_coh = f"""
         SELECT
             document_id,
@@ -398,8 +424,7 @@ def get_dashboard_data(request):
         rows_coh = bq_client.query(query_coh).result()
         for row in rows_coh:
             doc_id = row.document_id
-            # Includi solo i documenti che sono già stati filtrati e inclusi da core_metrics
-            if doc_id in all_grouped_data:
+            if doc_id in all_grouped_data: # Includi solo i documenti già filtrati per l'utente
                 all_grouped_data[doc_id]["coherence_pairs"].append({
                     "nome_coppia": row.nome_coppia,
                     "punteggio_coppia": row.punteggio_coppia,
@@ -421,7 +446,7 @@ def process_pitch_deck(cloud_event):
     print(f"--- FINE DEBUG cloud_event ---\n")
 
     # IMPORANTE: MODIFICA CON L'EMAIL DEL TUO ADMIN FIREBASE
-    # Questa email verrà usata per associare i caricamenti manuali a un utente admin specifico.
+    # Questa email verr\u00E0 usata per associare i caricamenti manuali a un utente admin specifico.
     # In un ambiente di produzione, considera di usare Google Secret Manager per questo valore.
     ADMIN_EMAIL_FOR_MANUAL_UPLOADS = "admin@validatr.com" # <--- MODIFICA QUI
 
@@ -432,7 +457,7 @@ def process_pitch_deck(cloud_event):
         elif hasattr(cloud_event, "data"):
             event_data = cloud_event.data
         else:
-            print("Errore: cloud_event non è un dizionario e non ha l'attributo 'data'.")
+            print("Errore: cloud_event non \u00E8 un dizionario e non ha l'attributo 'data'.")
             return {"status": "error", "message": "CloudEvent is neither a dict nor has a 'data' attribute."}
 
         if event_data is None:
@@ -469,8 +494,8 @@ def process_pitch_deck(cloud_event):
         blob_metadata = None # Inizializza per sicurezza
 
         if input_blob.exists():
-            input_blob.reload() # Assicurati di avere i metadati più recenti
-            blob_metadata = input_blob.metadata # Assegna i metadati a una variabile locale
+            input_blob.reload() # Assicurati di avere i metadati pi\u00F9 recenti
+            blob_metadata = input_blob.metadata if input_blob.metadata is not None else {} # Inizializza a dict vuoto se None
 
             if blob_metadata: # Verifica se i metadati sono presenti e non None
                 # 1. Tenta di ottenere l'email dell'utente finale dai metadati di Zapier/Typeform
@@ -487,15 +512,15 @@ def process_pitch_deck(cloud_event):
                 else:
                     print("Metadato 'user_email' non presente nel blob.")
 
-                # 2. Se l'utente finale non è stato identificato, controlla se è un caricamento manuale dell'admin
+                # 2. Se l'utente finale non \u00E8 stato identificato, controlla se \u00E8 un caricamento manuale dell'admin
                 if not user_id_for_firestore:
                     upload_source_metadata = blob_metadata.get('upload_source')
                     if upload_source_metadata == 'manual_admin':
-                        # Se è un caricamento manuale dell'admin, salva SEMPRE nel percorso pubblico.
+                        # Se \u00E8 un caricamento manuale dell'admin, salva SEMPRE nel percorso pubblico.
                         # Non associarlo a un UID specifico in Firestore per questo tipo di upload.
                         user_id_for_firestore = None 
                         print(f"Associando il pitch come pubblico a causa di 'manual_admin' source.")
-                        # Potresti voler loggare l'email admin qui per tracciabilità nei log
+                        # Potresti voler loggare l'email admin qui per tracciabilit\u00E0 nei log
                         # try:
                         #     admin_user_record = auth.get_user_by_email(ADMIN_EMAIL_FOR_MANUAL_UPLOADS)
                         #     print(f"Caricamento manuale dell'Admin (Email: {ADMIN_EMAIL_FOR_MANUAL_UPLOADS}, UID: {admin_user_record.uid}) salvato pubblicamente.")
@@ -504,9 +529,9 @@ def process_pitch_deck(cloud_event):
                     else:
                         print("Metadato 'upload_source' non presente o non 'manual_admin'.")
             else:
-                print("WARNING: Blob esiste ma non ha metadati personalizzati. Il pitch sarà salvato pubblicamente.")
+                print("WARNING: Blob esiste ma non ha metadati personalizzati. Il pitch sar\u00E0 salvato pubblicamente.")
         else:
-            print("WARNING: Blob non trovato per la lettura dei metadati. Il pitch sarà salvato pubblicamente.")
+            print("WARNING: Blob non trovato per la lettura dei metadati. Il pitch sar\u00E0 salvato pubblicamente.")
 
 
         # Scarica il contenuto del PDF in memoria per la nuova analisi
@@ -530,7 +555,7 @@ def process_pitch_deck(cloud_event):
             print("Utilizzando risultati di analisi mock per testing. ABILITA LA CHIAMATA GPT PER L'ANALISI REALE.")
             analysis_result = {
                 "variabili_valutate": [
-                    {"nome": "Problema", "punteggio": 70, "motivazione": "Mock: Il problema è ben compreso."},
+                    {"nome": "Problema", "punteggio": 70, "motivazione": "Mock: Il problema \u00E8 ben compreso."},
                     {"nome": "Target", "punteggio": 65, "motivazione": "Mock: Target definito."},
                     {"nome": "Soluzione", "punteggio": 75, "motivazione": "Mock: Soluzione chiara."},
                     {"nome": "Mercato", "punteggio": 60, "motivazione": "Mock: Mercato ampio."},
@@ -543,24 +568,24 @@ def process_pitch_deck(cloud_event):
                     {"coppia": "Target - Mercato", "punteggio": 65, "motivazione": "Mock: Coerenza Target-Mercato media."},
                     {"coppia": "Soluzione - MVP", "punteggio": 50, "motivazione": "Mock: Coerenza Soluzione-MVP debole."},
                     {"coppia": "Team - Ritorno Atteso", "punteggio": 45, "motivazione": "Mock: Coerenza Team-Ritorno Atteso bassa."},
-                    {"coppia": "Problema - Target", "punteggio": 70, "motivazione": "Il problema è rilevante per il target definito, ma la connessione tra le esigenze specifiche di questo segmento e la soluzione proposta potrebbe essere più esplicita e approfondita."},
-                    {"coppia": "Problema - Mercato", "punteggio": 80, "motivazione": "Il mercato è ampio e in crescita, coerente con il problema e la soluzione, anche se sarebbe utile un collegamento più diretto tra la dimensione del mercato e la reale domanda del target."},
-                    {"coppia": "Problema - MVP", "punteggio": 50, "motivazione": "L'MVP è menzionato ma non dettagliato, quindi la coerenza tra problema e MVP è debole. È difficile valutare se l'MVP possa effettivamente validare il problema senza ulteriori informazioni."},
-                    {"coppia": "Problema - Team", "punteggio": 65, "motivazione": "Il team ha competenze rilevanti, ma non è chiaro se abbia le capacità specifiche per risolvere il problema in modo efficace, specialmente in relazione alle sfide tecniche e di mercato."},
-                    {"coppia": "Problema - Ritorno Atteso", "punteggio": 40, "motivazione": "L'assenza di stime di ritorno rende poco coerente la relazione tra il problema e le aspettative di ritorno economico, creando una disconnessione tra la necessità di risolvere il problema e i benefici attesi."},
-                    {"coppia": "Target - Soluzione", "punteggio": 75, "motivazione": "La soluzione è pensata per il target, ma potrebbe essere più personalizzata o adattata alle esigenze specifiche di questo segmento, migliorando la coerenza."},
-                    {"coppia": "Target - MVP", "punteggio": 55, "motivazione": "L'MVP non è descritto in modo dettagliato, quindi la coerenza tra target e MVP è limitata. È difficile capire se l'MVP sia tarato sulle esigenze specifiche del target."},
+                    {"coppia": "Problema - Target", "punteggio": 70, "motivazione": "Il problema \u00E8 rilevante per il target definito, ma la connessione tra le esigenze specifiche di questo segmento e la soluzione proposta potrebbe essere pi\u00F9 esplicita e approfondita."},
+                    {"coppia": "Problema - Mercato", "punteggio": 80, "motivazione": "Il mercato \u00E8 ampio e in crescita, coerente con il problema e la soluzione, anche se sarebbe utile un collegamento pi\u00F9 diretto tra la dimensione del mercato e la reale domanda del target."},
+                    {"coppia": "Problema - MVP", "punteggio": 50, "motivazione": "L'MVP \u00E8 menzionato ma non dettagliato, quindi la coerenza tra problema e MVP \u00E8 debole. \u00C8 difficile valutare se l'MVP possa effettivamente validare il problema senza ulteriori informazioni."},
+                    {"coppia": "Problema - Team", "punteggio": 65, "motivazione": "Il team ha competenze rilevanti, ma non \u00E8 chiaro se abbia le capacit\u00E0 specifiche per risolvere il problema in modo efficace, specialmente in relazione alle sfide tecniche e di mercato."},
+                    {"coppia": "Problema - Ritorno Atteso", "punteggio": 40, "motivazione": "L'assenza di stime di ritorno rende poco coerente la relazione tra il problema e le aspettative di ritorno economico, creando una disconnessione tra la necessit\u00E0 di risolvere il problema e i benefici attesi."},
+                    {"coppia": "Target - Soluzione", "punteggio": 75, "motivazione": "La soluzione \u00E8 pensata per il target, ma potrebbe essere pi\u00F9 personalizzata o adattata alle esigenze specifiche di questo segmento, migliorando la coerenza."},
+                    {"coppia": "Target - MVP", "punteggio": 55, "motivazione": "L'MVP non \u00E8 descritto in modo dettagliato, quindi la coerenza tra target e MVP \u00E8 limitata. \u00C8 difficile capire se l'MVP sia tarato sulle esigenze specifiche del target."},
                     {"coppia": "Target - Team", "punteggio": 70, "motivazione": "Il team ha competenze adeguate per il target, ma non sono evidenziate esperienze specifiche nel segmento di mercato o nelle esigenze di questo pubblico."},
                     {"coppia": "Target - Ritorno Atteso", "punteggio": 45, "motivazione": "L'assenza di stime di ritorno rende poco coerente la relazione tra il target e le aspettative di ritorno economico, creando un gap tra le esigenze del segmento e i benefici attesi."},
                     {"coppia": "Soluzione - Mercato", "punteggio": 80, "motivazione": "La soluzione si inserisce in un mercato in crescita e con ampio potenziale, coerente con le dimensioni e le tendenze del settore."},
-                    {"coppia": "Soluzione - Team", "punteggio": 70, "motivazione": "Il team ha competenze tecniche e di marketing, coerenti con lo sviluppo e il lancio della soluzione, anche se mancano dettagli sulla capacità di innovare o differenziarsi."},
+                    {"coppia": "Soluzione - Team", "punteggio": 70, "motivazione": "Il team ha competenze tecniche e di marketing, coerenti con lo sviluppo e il lancio della soluzione, anche se mancano dettagli sulla capacit\u00E0 di innovare o differenziarsi."},
                     {"coppia": "Soluzione - Ritorno Atteso", "punteggio": 45, "motivazione": "L'assenza di proiezioni di ritorno rende debole la coerenza tra la soluzione proposta e le aspettative di ritorno economico."},
-                    {"coppia": "Mercato - MVP", "punteggio": 55, "motivazione": "L'MVP non è descritto in modo dettagliato, quindi la coerenza tra mercato e MVP è limitata. Non si può valutare se l'MVP possa validare il mercato."},
+                    {"coppia": "Mercato - MVP", "punteggio": 55, "motivazione": "L'MVP non \u00E8 descritto in modo dettagliato, quindi la coerenza tra mercato e MVP \u00E8 limitata. Non si pu\u00F2 valutare se l'MVP possa validare il mercato."},
                     {"coppia": "Mercato - Team", "punteggio": 75, "motivazione": "Il mercato ampio e in crescita richiede un team con competenze specifiche, che il team sembra possedere, anche se non sono dettagliate le esperienze nel settore."},
                     {"coppia": "Mercato - Ritorno Atteso", "punteggio": 50, "motivazione": "L'assenza di stime di ritorno rende poco coerente la relazione tra dimensione di mercato e aspettative di ritorno economico."},
-                    {"coppia": "MVP - Team", "punteggio": 50, "motivazione": "L'MVP non è dettagliato, quindi la coerenza con il team è limitata. Non si può valutare se il team abbia le competenze per sviluppare e validare l'MVP."},
+                    {"coppia": "MVP - Team", "punteggio": 50, "motivazione": "L'MVP non \u00E8 dettagliato, quindi la coerenza con il team \u00E8 limitata. Non si pu\u00F2 valutare se il team abbia le competenze per sviluppare e validare l'MVP."},
                     {"coppia": "MVP - Ritorno Atteso", "punteggio": 40, "motivazione": "L'assenza di stime di ritorno rende debole la coerenza tra MVP e ritorno atteso, creando un gap tra la validazione del prodotto e i benefici economici."},
-                    {"coppia": "Team - Ritorno Atteso", "punteggio": 55, "motivazione": "Il team ha competenze adeguate, ma senza proiezioni di ritorno, la relazione tra capacità esecutiva e benefici economici attesi è poco supportata."}
+                    {"coppia": "Team - Ritorno Atteso", "punteggio": 55, "motivazione": "Il team ha competenze adeguate, ma senza proiezioni di ritorno, la relazione tra capacit\u00E0 esecutiva e benefici economici attesi \u00E8 poco supportata."}
                 ]
             }
         # --- FINE RISULTATO MOCK ---
@@ -575,19 +600,29 @@ def process_pitch_deck(cloud_event):
         document_id = base_file_name 
 
         # --- SALVA O AGGIORNA SU FIRESTORE (con user_id) ---
-        # user_id_for_firestore sarà l'UID dell'utente finale, dell'admin, o None per il pubblico
+        # user_id_for_firestore sar\u00E0 l'UID dell'utente finale, dell'admin, o None per il pubblico
         firestore_save_success = save_to_firestore(document_id, final_analysis, user_id=user_id_for_firestore)
         if not firestore_save_success:
-            print(f"AVVERTIMENTO: Il salvataggio/aggiornamento su Firestore per {document_id} (user_id: {user_id_for_firestore if user_id_for_firestore else 'N/A'}) è fallito. L'analisi è stata completata ma il dato non è stato persistito in Firestore.")
+            print(f"AVVERTIMENTO: Il salvataggio/aggiornamento su Firestore per {document_id} (user_id: {user_id_for_firestore if user_id_for_firestore else 'N/A'}) \u00E8 fallito. L'analisi \u00E8 stata completata ma il dato non \u00E8 stato persistito in Firestore.")
         
         # --- SALVA O AGGIORNA SU CLOUD STORAGE ---
         try:
             output_blob.upload_from_string(json.dumps(final_analysis, indent=2))
             print(f"Analisi completa salvata/aggiornata in gs://{output_bucket_name}/{output_blob_name}")
+            
+            backup_bucket_name = "validatr-pitch-decks-input-backup" # Definisci il nome del bucket di backup
+            backup_bucket = storage_client.bucket(backup_bucket_name)
+            backup_blob = backup_bucket.blob(file_name) # Mantieni lo stesso nome file
+
+            # Sposta il blob
+            new_blob = input_bucket.copy_blob(input_blob, backup_bucket, file_name)
+            input_blob.delete()
+            print(f"File '{file_name}' spostato con successo da '{bucket_name}' a '{backup_bucket_name}'.")
+            # --- FINE NUOVA LOGICA ---
             return {"status": "success", "message": "PDF processed, analysis saved/updated to CS and Firestore."}
         except NotFound as e:
             print(f"ERRORE CRITICO: Il bucket di output '{output_bucket_name}' non esiste o la funzione non ha i permessi. Dettaglio: {e}")
-            print(f"Impossibile salvare il risultato per il file: {file_name}. L'analisi è stata completata ma il salvataggio su CS è fallito.")
+            print(f"Impossibile salvare il risultato per il file: {file_name}. L'analisi \u00E8 stata completata ma il salvataggio su CS \u00E8 fallito.")
             return {"status": "error", "message": f"Output bucket '{output_bucket_name}' not found or no permissions. Analysis completed but result not saved to CS."}
 
     except openai.APIError as e:
@@ -602,6 +637,5 @@ def process_pitch_deck(cloud_event):
         return {"status": "error", "message": f"Failed to read PDF: {e}"}
     except Exception as e:
         print(f"ERRORE GENERALE NON CATTURATO: {e}")
-        print(f"Si è verificato un errore inatteso durante l'elaborazione del file: {file_name}. L'esecuzione verrà terminata come successo per evitare retry.")
+        print(f"Si \u00E8 verificato un errore inatteso durante l'elaborazione del file: {file_name}. L'esecuzione verr\u00E0 terminata come successo per evitare retry.")
         return {"status": "error", "message": f"An unexpected error occurred: {e}. Execution terminated successfully to prevent retries."}
-
