@@ -516,23 +516,21 @@
             // Aggiorna le scorecard di riepilogo (usa calcoli_aggiuntivi)
              if (documentData.core_metrics) {
                 const coreMetrics = documentData.core_metrics;
-                
-                // ... (altre assegnazioni di textContent per score e indice) ...
-
+                finalAdjustedScoreValue.textContent = coreMetrics.final_adjusted_score ? coreMetrics.final_adjusted_score.toFixed(2) : '--';
+                coherenceIndexValue.textContent = coreMetrics.indice_coerenza ? coreMetrics.indice_coerenza.toFixed(2) : '--';
                 pitchClassValue.textContent = coreMetrics.classe_pitch || '--'; // Usa 'classe_pitch' da Firestore
 
                 // Reset scorecard background classes
-                const scorecardClasses = ['bg-class-investire', 'bg-class-monitorare', 'bg-class-verificare', 'bg-class-pass', 'bg-class-default-scorecard'];
+                const scorecardClasses = ['bg-class-verde', 'bg-class-giallo', 'bg-class-rosso', 'bg-class-default-scorecard'];
                 pitchClassCard.classList.remove(...scorecardClasses);
 
                 // Update icon colors and card background based on class
-                // (Le classi icona non cambiano qui, ma le classi di sfondo della card sì)
-                // finalAdjustedScoreIcon.className = 'score-icon'; // Rimosso se già definite altrove
-                // coherenceIndexIcon.className = 'score-icon'; // Rimosso se già definite altrove
-                // pitchClassIcon.className = 'score-icon'; // Rimosso se già definite altrove
-                // finalAdjustedScoreIcon.textContent = 'analytics'; // Rimosso se già definite altrove
-                // coherenceIndexIcon.textContent = 'alt_route'; // Rimosso se già definite altrove
-                // pitchClassIcon.textContent = 'emoji_events'; // Rimosso se già definite altrove
+                finalAdjustedScoreIcon.className = 'score-icon';
+                coherenceIndexIcon.className = 'score-icon';
+                pitchClassIcon.className = 'score-icon';
+                finalAdjustedScoreIcon.textContent = 'analytics';
+                coherenceIndexIcon.textContent = 'alt_route';
+                pitchClassIcon.textContent = 'emoji_events';
 
 
                 const currentClass = coreMetrics.classe_pitch;
