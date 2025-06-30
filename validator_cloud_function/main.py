@@ -136,51 +136,75 @@ Il formato JSON di output deve essere ESATTAMENTE come segue. Non includere alcu
     {
       "nome": "Problema",
       "punteggio": <int: 0-100>,
-      "motivazione": "<string: motivazione dettagliata>"
+      "motivazione": {
+        "it": "<string: motivazione dettagliata in italiano>",
+        "en": "<string: motivazione dettagliata in inglese>"
+      }
     },
     {
       "nome": "Target",
       "punteggio": <int: 0-100>,
-      "motivazione": "<string: motivazione dettagliata>"
+      "motivazione": {
+        "it": "<string: motivazione dettagliata in italiano>",
+        "en": "<string: motivazione dettagliata in inglese>"
+      }
     },
     {
       "nome": "Soluzione",
       "punteggio": <int: 0-100>,
-      "motivazione": "<string: motivazione dettagliata>"
+      "motivazione": {
+        "it": "<string: motivazione dettagliata in italiano>",
+        "en": "<string: motivazione dettagliata in inglese>"
+      }
     },
     {
       "nome": "Mercato",
       "punteggio": <int: 0-100>,
-      "motivazione": "<string: motivazione dettagliata>"
+      "motivazione": {
+        "it": "<string: motivazione dettagliata in italiano>",
+        "en": "<string: motivazione dettagliata in inglese>"
+      }
     },
     {
       "nome": "MVP",
       "punteggio": <int: 0-100>,
-      "motivazione": "<string: motivazione dettagliata>"
+      "motivazione": {
+        "it": "<string: motivazione dettagliata in italiano>",
+        "en": "<string: motivazione dettagliata in inglese>"
+      }
     },
     {
       "nome": "Team",
       "punteggio": <int: 0-100>,
-      "motivazione": "<string: motivazione dettagliata>"
+      "motivazione": {
+        "it": "<string: motivazione dettagliata in italiano>",
+        "en": "<string: motivazione dettagliata in inglese>"
+      }
     },
     {
       "nome": "Ritorno Atteso",
       "punteggio": <int: 0-100>,
-      "motivazione": "<string: motivazione dettagliata>"
+      "motivazione": {
+        "it": "<string: motivazione dettagliata in italiano>",
+        "en": "<string: motivazione dettagliata in inglese>"
+      }
     }
   ],
   "coerenza_coppie": [
 """
-    # Genera la struttura per le 21 coppie di coerenza nel JSON di output
     for i, (var1, var2) in enumerate(COHERENCE_PAIRS):
         system_prompt_content += f"""    {{
       "coppia": "{var1} - {var2}",
       "punteggio": <int: 0-100>,
-      "motivazione": "<string: motivazione dettagliata>"
+      "motivazione": {{
+        "it": "<string: motivazione dettagliata in italiano>",
+        "en": "<string: motivazione dettagliata in inglese>"
+      }}
     }}{',' if i < len(COHERENCE_PAIRS) - 1 else ''}\n"""
     
     system_prompt_content += """  ]
 }
+
 ```
 Testo del pitch deck da analizzare:
 """
@@ -191,7 +215,7 @@ Testo del pitch deck da analizzare:
     ]
 
     response = openai.chat.completions.create(
-        model="gpt-4.1-nano", # Modello GPT aggiornato
+        model="gpt-4.1-nano", 
         messages=messages,
         temperature=0.1,
         max_tokens=3500, # Max tokens aggiornato
@@ -215,15 +239,11 @@ def perform_additional_calculations(gpt_analysis_data):
     variabili_valutate_dict = {v['nome']: v['punteggio'] for v in gpt_analysis_data.get('variabili_valutate', [])}
     coerenza_coppie = gpt_analysis_data.get('coerenza_coppie', [])
 
-    # 1. Calcolo dell'Indice di Coerenza (IC)
     total_coherence_score = sum(item['punteggio'] for item in coerenza_coppie)
     num_coherence_pairs = len(coerenza_coppie)
     ic = total_coherence_score / num_coherence_pairs if num_coherence_pairs > 0 else 0
-    print(f"Indice di Coerenza (IC): {ic:.2f}")
 
-    # 2. Calcolo del Final_Score e Final_Adjusted_Score.
-    # Definisci i pesi per ogni variabile.
-    weights = { # Pesi aggiornati dall'utente
+    weights = {
         "Problema": 0.20,
         "Target": 0.17,
         "Soluzione": 0.17,
@@ -234,38 +254,39 @@ def perform_additional_calculations(gpt_analysis_data):
     }
 
     final_score = sum(variabili_valutate_dict.get(var, 0) * weights.get(var, 0) for var in weights)
-    print(f"Final Score: {final_score:.2f}")
 
-    # L'Adjusted Score ora è una media ponderata
     peso_final_score = 0.7
     peso_indice_coerenza = 0.3
     final_adjusted_score = (final_score * peso_final_score + ic * peso_indice_coerenza)
-    print(f"Final Adjusted Score (Nuova Logica): {final_adjusted_score:.2f}")
 
-    # 3. Calcolo dello Z-score.
-    z_score = None # Implementare quando avrai un dataset storico
+    z_score = None
 
-    # 4. Assegnazione della Classe (INVESTIRE, MONITORARE, VERIFICARE, PASS)
-    startup_class = "NON CLASSIFICATO" # Default
+    startup_class = "NON CLASSIFICATO"
     if final_adjusted_score >= 77:
         startup_class = "INVESTIRE"
     elif final_adjusted_score >= 63:
         startup_class = "MONITORARE"
     elif final_adjusted_score >= 40:
         startup_class = "VERIFICARE"
-    else: # Per punteggi inferiori a 40
-        startup_class = "PASS" # "Pass" come in "Passare oltre, non investire"
+    else:
+        startup_class = "PASS"
 
-    print(f"Classe Assegnata: {startup_class}")
-
-    # Aggiorna il JSON di output con i calcoli aggiuntivi
-    gpt_analysis_data["calcoli_aggiuntivi"] = {
+    # AGGIORNAMENTO CRUCIALE QUI:
+    # Cambia "calcoli_aggiuntivi" in "core_metrics" e "classe" in "classe_pitch"
+    # per farli corrispondere al frontend.
+    gpt_analysis_data["core_metrics"] = {
         "indice_coerenza": round(ic, 2),
         "final_score": round(final_score, 2),
         "final_adjusted_score": round(final_adjusted_score, 2),
         "z_score": z_score,
-        "classe": startup_class
+        "classe_pitch": startup_class # NOME CHIAVE AGGIORNATO
     }
+
+    # Se la chiave "calcoli_aggiuntivi" esistesse ancora nel gpt_analysis_data
+    # e volessi rimuoverla (per pulizia, anche se core_metrics sovrascrive),
+    # potresti aggiungere:
+    # if "calcoli_aggiuntivi" in gpt_analysis_data:
+    #    del gpt_analysis_data["calcoli_aggiuntivi"]
 
     return gpt_analysis_data
 
@@ -297,34 +318,23 @@ def get_dashboard_data(request):
 
     # Configura gli header CORS
     headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Methods': 'GET, POST', # Aggiungi i metodi permessi
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization', # Permetti header Authorization
-        'Access-Control-Max-Age': '3600' # Opzionale: cache per pre-flight requests
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Methods': 'GET, POST',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '3600'
     }
 
-    # Logica per impostare Access-Control-Allow-Origin
-    # In ambiente di sviluppo locale, puoi permettere localhost o altre origini specifiche
     if request_origin and ("localhost" in request_origin or "127.0.0.1" in request_origin):
         headers['Access-Control-Allow-Origin'] = request_origin
         print(f"DEBUG: Impostato Access-Control-Allow-Origin a origine locale: {request_origin}")
     else:
-        # In produzione, specifica il dominio della tua app React su Firebase Hosting
         headers['Access-Control-Allow-Origin'] = 'https://validatr-mvp.web.app'
         print(f"DEBUG: Impostato Access-Control-Allow-Origin a dominio di produzione: {headers['Access-Control-Allow-Origin']}")
-        # Per test, potresti temporaneamente usare '*' ma NON farlo in produzione per motivi di sicurezza
-        # headers['Access-Control-Allow-Origin'] = '*'
 
-
-    # Gestione delle richieste OPTIONS per CORS pre-flight
     if request.method == 'OPTIONS':
-        return ('', 204, headers) # Restituisce una risposta vuota con solo gli header
-
-    # Imposta gli header CORS per le richieste reali (GET/POST)
-    # L'header Access-Control-Allow-Origin è già impostato sopra
+        return ('', 204, headers)
 
     try:
-        # Autenticazione dell'utente tramite Firebase ID Token
         auth_header = request.headers.get('Authorization')
         if not auth_header:
             return json.dumps({"error": "Authorization header missing"}), 401, headers
@@ -339,20 +349,10 @@ def get_dashboard_data(request):
             print(f"Errore nella verifica del token Firebase: {e}")
             return json.dumps({"error": f"Invalid Firebase ID token: {e}"}), 403, headers
 
-        # Ottieni il parametro di filtro dalla richiesta (rimosso dalla logica precedente)
-        # filter_type = request.args.get('filter', 'all') 
-
         all_grouped_data = {}
-    
-        # Definisci il tuo ID progetto e dataset BigQuery
+
         PROJECT_ID = "validatr-mvp" 
         DATASET_ID = "validatr_analyses_dataset"
-        
-        # --- Recupera e raggruppa i dati da calcoli_aggiuntivi_view ---
-        # Poiché l'HTML è stato ripristinato alla versione che usa le chiamate API
-        # dobbiamo ripristinare la logica che legge da BigQuery VIEWS.
-        # Ho rimosso l'integrazione di Firestore diretta per questa funzione API
-        # e aggiunto le query per le viste BigQuery.
         
         # Query per calcoli_aggiuntivi_view
         query_core = f"""
@@ -371,7 +371,6 @@ def get_dashboard_data(request):
         rows_core = bq_client.query(query_core).result()
         for row in rows_core:
             doc_id = row.document_id
-            # Filtra per l'utente autenticato (solo i miei pitch)
             if row.userId != uid:
                 continue
 
@@ -390,7 +389,7 @@ def get_dashboard_data(request):
                 "indice_coerenza": row.indice_coerenza,
                 "userId": row.userId
             }
-    
+        
         # Query per valutazione_pitch_view
         query_vars = f"""
         SELECT
@@ -404,13 +403,21 @@ def get_dashboard_data(request):
         rows_vars = bq_client.query(query_vars).result()
         for row in rows_vars:
             doc_id = row.document_id
-            if doc_id in all_grouped_data: # Includi solo i documenti già filtrati per l'utente
+            if doc_id in all_grouped_data:
+                # Tentativo di parsare motivazione_variabile se è una stringa JSON
+                parsed_motivation_var = row.motivazione_variabile
+                if isinstance(row.motivazione_variabile, str):
+                    try:
+                        parsed_motivation_var = json.loads(row.motivazione_variabile)
+                    except json.JSONDecodeError:
+                        pass # Non è JSON, usiamo la stringa così com'è
+
                 all_grouped_data[doc_id]["variables"].append({
                     "nome_variabile": row.nome_variabile,
                     "punteggio_variabile": row.punteggio_variabile,
-                    "motivazione_variabile": row.motivazione_variabile
+                    "motivazione_variabile": parsed_motivation_var
                 })
-    
+        
         # Query per pitch_coherence_view
         query_coh = f"""
         SELECT
@@ -424,13 +431,21 @@ def get_dashboard_data(request):
         rows_coh = bq_client.query(query_coh).result()
         for row in rows_coh:
             doc_id = row.document_id
-            if doc_id in all_grouped_data: # Includi solo i documenti già filtrati per l'utente
+            if doc_id in all_grouped_data:
+                # Tentativo di parsare motivazione_coppia se è una stringa JSON
+                parsed_motivation_coh = row.motivazione_coppia
+                if isinstance(row.motivazione_coppia, str):
+                    try:
+                        parsed_motivation_coh = json.loads(row.motivazione_coppia)
+                    except json.JSONDecodeError:
+                        pass # Non è JSON, usiamo la stringa così com'è
+
                 all_grouped_data[doc_id]["coherence_pairs"].append({
                     "nome_coppia": row.nome_coppia,
                     "punteggio_coppia": row.punteggio_coppia,
-                    "motivazione_coppia": row.motivazione_coppia
+                    "motivazione_coppia": parsed_motivation_coh
                 })
-    
+        
         return json.dumps(all_grouped_data), 200, headers
 
     except Exception as e:

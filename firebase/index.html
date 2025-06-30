@@ -3,26 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VALIDATR™ - Dashboard Completa</title>
+    <title data-i18n-key="app_title">VALIDATR™ - Dashboard Completa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Google Material Icons (Outlined style) for icons -->
+
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Font Changed to Roboto -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
-    <!-- Firebase SDK (Versioni da CDN) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, query, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, query, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-        // Configurazione Firebase del tuo progetto
-        // Questi valori sono stati presi dal file index.html fornito dall'utente.
+        // Configurazione Firebase del tuo progetto (Sostituisci con i tuoi valori reali)
         const firebaseConfig = {
             apiKey: "AIzaSyDlGp9jxE1YubvFm6MDqSMT9M9G_5iu1f4",
             authDomain: "validatr-mvp.firebaseapp.com",
@@ -36,38 +33,39 @@
         // Inizializza Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app); // Firestore instance
+        const db = getFirestore(app);
+        const storage = getStorage(app);
 
-        // Variabili globali per l'uso nello script principale
+        // Espongo le istanze globalmente per lo script principale
+        window.firebaseApp = app;
         window.firebaseAuth = auth;
         window.firebaseDb = db;
+        window.firebaseStorage = storage;
         window.setPersistence = setPersistence;
         window.browserSessionPersistence = browserSessionPersistence;
         window.signInWithEmailAndPassword = signInWithEmailAndPassword;
         window.signOut = signOut;
         window.onAuthStateChanged = onAuthStateChanged;
-        window.getFirestore = getFirestore;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
         window.collection = collection;
         window.query = query;
         window.getDocs = getDocs;
         window.doc = doc;
         window.getDoc = getDoc;
+        window.setDoc = setDoc;
+        window.ref = ref;
+        window.uploadBytes = uploadBytes;
 
-        // Variabile globale per l'APP_ID di Firestore (percorsi collezione)
-        // Questo dovrebbe corrispondere all'APP_ID usato nella tua Cloud Function
         window.APP_ID = firebaseConfig.projectId;
+        window.PITCH_INPUT_BUCKET = "validatr-pitch-decks-input"; // Sostituisci con il nome esatto del tuo bucket di input
     </script>
 
-    <!-- Stilizzazione generale -->
     <style>
         body {
             font-family: 'Roboto', sans-serif; /* Font Changed to Roboto */
             background-color: #f8fafc; /* slate-50 */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             min-height: 100vh;
-            padding-bottom: 2rem; /* Spazio per il piè di pagina */
+            padding-bottom: 2rem;
         }
         .container-padding {
             padding-left: 1rem;
@@ -180,182 +178,213 @@
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center">
-    <!-- Intestazione Principale e Barra di Navigazione -->
     <header class="w-full bg-white shadow-lg border-b border-slate-200 fixed top-0 z-20">
         <div class="container-padding mx-auto py-4 flex flex-col sm:flex-row items-center justify-between">
             <div class="flex items-center mb-4 sm:mb-0">
                 <img src="https://storage.googleapis.com/validatr-statics-assets/logo2.PNG" alt="VALIDATR Logo" class="h-10 w-10 mr-3 rounded-md">
-                <h1 class="text-3xl font-bold text-slate-900">
-                    VALIDATR™
-                </h1>
+                <h1 class="text-3xl font-bold text-slate-900" data-i18n-key="app_title">VALIDATR™</h1>
             </div>
             <nav class="flex space-x-6 mb-4 sm:mb-0">
-                <a href="#" id="navHome" class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600">Home (Dashboard Dettagliata)</a>
-                <a href="#" id="navDealFlow" class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600">Deal Flow (Ranking Investitori)</a>
+                <a href="#" id="navHome" class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600" data-i18n-key="nav_home">Home (Dashboard Dettagliata)</a>
+                <a href="#" id="navDealFlow" class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600" data-i18n-key="nav_deal_flow">Deal Flow (Ranking Investitori)</a>
             </nav>
             <div id="authStatus" class="flex items-center text-slate-700 font-medium hidden">
-                Benvenuto, <span id="userEmail" class="ml-1 font-semibold text-teal-600"></span>!
-                <button id="logoutButton" class="ml-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition duration-200">
+                <button id="uploadPitchButton" class="mr-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200 flex items-center">
+                    <span class="material-icons-outlined text-xl mr-2">cloud_upload</span>
+                    <span data-i18n-key="upload_pitch_button">Carica Pitch</span>
+                </button>
+                <div id="profileCircle" class="profile-circle mr-3">
+                    <span class="material-icons-outlined profile-circle-icon">person</span>
+                </div>
+                <span data-i18n-key="welcome_message">Benvenuto</span>, <span id="userEmail" class="ml-1 font-semibold text-teal-600"></span>!
+                <select id="languageSelector" class="ml-4 px-2 py-1 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm">
+                    <option value="it">Italiano</option>
+                    <option value="en">English</option>
+                </select>
+                <button id="logoutButton" class="ml-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition duration-200" data-i18n-key="logout_button">
                     Logout
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Sezione di Login -->
     <div id="loginSection" class="w-full max-w-md card mt-[100px] p-8 flex flex-col items-center">
-        <h2 class="text-2xl font-semibold text-slate-800 mb-6">Accedi a VALIDATR™</h2>
-        <input type="email" id="emailInput" placeholder="Email" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
-        <input type="password" id="passwordInput" placeholder="Password" class="w-full px-4 py-2 mb-6 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
-        <button id="loginButton" class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200">
+        <h2 class="text-2xl font-semibold text-slate-800 mb-6" data-i18n-key="login_title">Accedi a VALIDATR™</h2>
+        <input type="email" id="emailInput" placeholder="Email" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" data-i18n-key="email_placeholder">
+        <input type="password" id="passwordInput" placeholder="Password" class="w-full px-4 py-2 mb-6 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" data-i18n-key="password_placeholder">
+        <button id="loginButton" class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200" data-i18n-key="login_button_text">
             Accedi
         </button>
         <p id="loginError" class="text-red-600 mt-4 hidden"></p>
+        <p class="mt-4 text-slate-600" data-i18n-key="no_account_prompt">Non hai un account? 
+            <a href="#" id="showRegisterForm" class="text-teal-600 hover:text-teal-700 font-semibold" data-i18n-key="register_here_link">Registrati qui</a>
+        </p>
     </div>
 
-    <!-- Contenuto Principale della Dashboard (Nascosto inizialmente, con padding per la navbar fissa) -->
-    <main id="dashboardContent" class="w-full container-padding mt-[100px] grid grid-cols-1 gap-8 relative hidden">
-        <div id="loadingOverlay" class="loading-overlay hidden">
-            <div class="spinner"></div>
-            <p class="ml-4 text-slate-700 text-lg">Caricamento dati...</p>
-        </div>
+    <div id="registerSection" class="w-full max-w-md card mt-[100px] p-8 flex flex-col items-center hidden">
+        <h2 class="text-2xl font-semibold text-slate-800 mb-6" data-i18n-key="register_title">Registrati a VALIDATR™</h2>
+        <input type="email" id="registerEmail" placeholder="Email" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" data-i18n-key="email_placeholder">
+        <input type="password" id="registerPassword" placeholder="Password" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" data-i18n-key="password_placeholder">
+        <input type="password" id="confirmPassword" placeholder="Conferma Password" class="w-full px-4 py-2 mb-6 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" data-i18n-key="confirm_password_placeholder">
+        <button id="registerButton" class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200" data-i18n-key="register_button_text">
+            Registrati
+        </button>
+        <p id="registerError" class="text-red-600 mt-4 hidden"></p>
+        <p class="mt-4 text-slate-600" data-i18n-key="already_have_account_prompt">Hai già un account? 
+            <a href="#" id="showLoginForm" class="text-teal-600 hover:text-teal-700 font-semibold" data-i18n-key="login_here_link">Accedi qui</a>
+        </p>
+    </div>
 
-        <!-- Home: Dashboard Dettagliata (Variabili Pitch Deck) -->
-        <div id="homeDashboard" class="flex flex-col w-full">
-            <header class="w-full container-padding mb-8 pt-8">
-                <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200">
-                    <h2 class="text-2xl font-bold text-slate-900 mb-4 sm:mb-0">
-                        Dashboard Analisi Dettagliata
-                    </h2>
-                    <div class="flex items-center space-x-4">
-                        <label for="documentSelector" class="text-slate-700 font-medium">Seleziona Pitch Deck:</label>
-                        <select id="documentSelector" class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
-                            <!-- Opzioni popolate da JS -->
-                        </select>
+    <main id="dashboardContent" class="w-full container-padding pt-[100px] hidden">
+        <div class="mx-auto max-w-7xl w-full"> <div id="loadingOverlay" class="loading-overlay hidden">
+                <div class="spinner"></div>
+                <p class="ml-4 text-slate-700 text-lg" data-i18n-key="loading_data_message">Caricamento dati...</p>
+            </div>
+
+            <div id="homeDashboard" class="flex flex-col w-full">
+                <header class="w-full container-padding mb-8 pt-8">
+                    <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-4 sm:mb-0" data-i18n-key="detailed_dashboard_title">Dashboard Analisi Dettagliata</h2>
+                        <div class="flex items-center space-x-4">
+                            <label for="documentSelector" class="text-slate-700 font-medium" data-i18n-key="select_pitch_deck_label">Seleziona Pitch Deck:</label>
+                            <select id="documentSelector" class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+                                </select>
+                        </div>
                     </div>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
+                    <section class="card lg:col-span-2 mb-8">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-6" data-i18n-key="general_summary_title">Riepilogo Generale del Pitch Deck</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="scorecard-item">
+                                <span id="finalAdjustedScoreIcon" class="score-icon score-class-default">analytics</span>
+                                <div id="finalAdjustedScoreValue" class="scorecard-value">--</div>
+                                <div class="scorecard-label" data-i18n-key="score_finale_regolato_label">Score Finale Regolato</div>
+                            </div>
+                            <div class="scorecard-item">
+                                <span id="coherenceIndexIcon" class="score-icon score-class-default">alt_route</span>
+                                <div id="coherenceIndexValue" class="scorecard-value">--</div>
+                                <div class="scorecard-label" data-i18n-key="indice_coerenza_label">Indice di Coerenza</div>
+                            </div>
+                            <div id="pitchClassCard" class="scorecard-item">
+                                <span id="pitchClassIcon" class="score-icon score-class-default">emoji_events</span>
+                                <div id="pitchClassValue" class="scorecard-value">--</div>
+                                <div class="scorecard-label" data-i18n-key="classe_pitch_label">Classe Pitch</div>
+                            </div>
+                        </div>
+                        <div id="noCoreMetricsData" class="hidden text-center text-slate-500 mt-4" data-i18n-key="no_summary_data">Nessun dato di riepilogo disponibile per questo pitch.</div>
+                    </section>
+
+                    <section class="card flex flex-col w-full">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="variables_scores_title">Punteggi Variabili Valutate</h3>
+                        <p class="text-slate-600 mb-6" data-i18n-key="variables_chart_desc">
+                            Questo grafico a barre mostra i punteggi (0-100) assegnati a ciascuna delle 7 variabili chiave del pitch deck selezionato. Passa il mouse sulle barre per leggere la motivazione.
+                        </p>
+                        <div class="flex-grow flex items-center justify-center min-h-[300px]">
+                            <div class="chart-container">
+                                <canvas id="variablesChart"></canvas>
+                            </div>
+                        </div>
+                        <div id="noDataChart" class="hidden text-center text-slate-500 mt-4" data-i18n-key="no_chart_data">Nessun dato disponibile per il grafico.</div>
+                    </section>
+
+                    <section class="card flex flex-col w-full">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="variables_details_title">Dettaglio Variabili e Motivazioni</h3>
+                        <p class="text-slate-600 mb-6" data-i18n-key="variables_table_desc">
+                            Questa tabella fornisce i punteggi numerici e le motivazioni dettagliate per ogni variabile.
+                        </p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[500px] bg-white rounded-lg overflow-hidden">
+                                <thead>
+                                    <tr>
+                                        <th class="py-3 px-4 rounded-tl-lg" data-i18n-key="variable_header">Variabile</th>
+                                        <th class="py-3 px-4" data-i18n-key="score_header">Punteggio</th>
+                                        <th class="py-3 px-4 rounded-tr-lg" data-i18n-key="motivation_header">Motivazione</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="variablesTableBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                        <div id="noDataTable" class="hidden text-center text-slate-500 mt-4" data-i18n-key="no_table_data">Nessun dato disponibile per la tabella.</div>
+                    </section>
+
+                    <section class="card lg:col-span-2 mt-8 w-full">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="coherence_analysis_title">Analisi Coerenza tra Variabili</h3>
+                        <p class="text-slate-600 mb-6" data-i18n-key="coherence_section_desc">
+                            Questa sezione mostra la distribuzione di coerenza tra le variabili e i dettagli per ogni coppia.
+                        </p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center w-full">
+                            <div class="doughnut-chart-container">
+                                <canvas id="coherenceDoughnutChart"></canvas>
+                            </div>
+                            <div>
+                                <div class="flex flex-col sm:flex-row items-center sm:space-x-4 mb-4">
+                                    <label for="coherencePairSelector" class="text-slate-700 font-medium" data-i18n-key="select_pair_label">Seleziona Coppia:</label>
+                                    <select id="coherencePairSelector" class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent w-full sm:w-auto">
+                                        </select>
+                                </div>
+                                <div id="coherenceDetails" class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                    <p class="text-slate-700 font-medium mb-2" data-i18n-key="score_label">Punteggio: <span id="selectedCoherenceScore" class="font-bold">--</span></p>
+                                    <p class="text-slate-700" data-i18n-key="motivation_label">Motivazione: <span id="selectedCoherenceMotivation">Nessuna motivazione disponibile.</span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="noCoherenceData" class="hidden text-center text-slate-500 mt-4" data-i18n-key="no_coherence_data">Nessun dato di coerenza disponibile per questo pitch.</div>
+                    </section>
                 </div>
-            </header>
+            </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Sezione: Riepilogo Generale (Scorecard) -->
-                <section class="card lg:col-span-2 mb-8">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-6">Riepilogo Generale del Pitch Deck</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="scorecard-item">
-                            <!-- Material Icon: analytics for chart-line -->
-                            <span id="finalAdjustedScoreIcon" class="score-icon score-class-default">analytics</span>
-                            <div id="finalAdjustedScoreValue" class="scorecard-value">--</div>
-                            <div class="scorecard-label">Score Finale Regolato</div>
-                        </div>
-                        <div class="scorecard-item">
-                            <!-- Material Icon: alt_route for project-diagram -->
-                            <span id="coherenceIndexIcon" class="score-icon score-class-default">alt_route</span>
-                            <div id="coherenceIndexValue" class="scorecard-value">--</div>
-                            <div class="scorecard-label">Indice di Coerenza</div>
-                        </div>
-                        <div id="pitchClassCard" class="scorecard-item">
-                            <!-- Material Icon: emoji_events for trophy -->
-                            <span id="pitchClassIcon" class="score-icon score-class-default">emoji_events</span>
-                            <div id="pitchClassValue" class="scorecard-value">--</div>
-                            <div class="scorecard-label">Classe Pitch</div>
+            <div id="dealFlowDashboard" class="flex flex-col w-full hidden">
+                <header class="w-full container-padding mb-8 pt-8">
+                    <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-4 sm:mb-0" data-i18n-key="deal_flow_title">Deal Flow: Ranking Pitch per Investitori</h2>
+                        <div class="flex space-x-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="pitchFilter" value="my" checked class="form-radio text-teal-600 h-5 w-5">
+                                <span class="ml-2 text-slate-700 font-medium" data-i18n-key="my_pitches_radio">I Miei Pitch</span>
+                            </label>
                         </div>
                     </div>
-                    <div id="noCoreMetricsData" class="hidden text-center text-slate-500 mt-4">Nessun dato di riepilogo disponibile per questo pitch.</div>
-                </section>
+                </header>
 
-                <!-- Sezione Grafico a Barre delle Variabili -->
-                <section class="card lg:col-span-1 flex flex-col">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Punteggi Variabili Valutate</h3>
-                    <p class="text-slate-600 mb-6">
-                        Questo grafico a barre mostra i punteggi (0-100) assegnati a ciascuna delle 7 variabili chiave del pitch deck selezionato. Passa il mouse sulle barre per leggere la motivazione.
+                <section class="card w-full">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="ranking_chart_title">Classifica dei Pitch Deck (Score Finale Regolato)</h3>
+                    <p class="text-slate-600 mb-6" data-i18n-key="ranking_chart_desc">
+                        Questo grafico mostra tutti i pitch deck analizzati, ordinati in base al loro "Score Finale Regolato" in ordine decrescente. I pitch con i punteggi più alti sono in cima, rappresentando le opportunità più promettenti.
                     </p>
                     <div class="flex-grow flex items-center justify-center min-h-[300px]">
                         <div class="chart-container">
-                            <canvas id="variablesChart"></canvas>
+                            <canvas id="rankingChart"></canvas>
                         </div>
                     </div>
-                    <div id="noDataChart" class="hidden text-center text-slate-500 mt-4">Nessun dato disponibile per il grafico.</div>
-                </section>
-
-                <!-- Sezione Tabella Dettagliata Variabili -->
-                <section class="card lg:col-span-1 flex flex-col">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Dettaglio Variabili e Motivazioni</h3>
-                    <p class="text-slate-600 mb-6">
-                        Questa tabella fornisce i punteggi numerici e le motivazioni dettagliate per ogni variabile.
-                    </p>
-                    <div class="overflow-x-auto">
-                        <table class="w-full min-w-[500px] bg-white rounded-lg overflow-hidden">
-                            <thead>
-                                <tr>
-                                    <th class="py-3 px-4 rounded-tl-lg">Variabile</th>
-                                    <th class="py-3 px-4">Punteggio</th>
-                                    <th class="py-3 px-4 rounded-tr-lg">Motivazione</th>
-                                </tr>
-                            </thead>
-                            <tbody id="variablesTableBody">
-                                <!-- Righe popolate da JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="noDataTable" class="hidden text-center text-slate-500 mt-4">Nessun dato disponibile per la tabella.</div>
-                </section>
-
-                <!-- Nuova Sezione Dettaglio Coerenza con Dropdown -->
-                <section class="card lg:col-span-2 mt-8">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Analisi Coerenza tra Variabili</h3>
-                    <p class="text-slate-600 mb-6">
-                        Seleziona una coppia di variabili per visualizzarne il punteggio di coerenza e la motivazione dettagliata.
-                    </p>
-                    <div class="flex flex-col sm:flex-row items-center sm:space-x-4 mb-4">
-                        <label for="coherencePairSelector" class="text-slate-700 font-medium mb-2 sm:mb-0">Seleziona Coppia:</label>
-                        <select id="coherencePairSelector" class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent w-full sm:w-auto">
-                            <!-- Opzioni popolate da JS -->
-                        </select>
-                    </div>
-                    <div id="coherenceDetails" class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                        <p class="text-slate-700 font-medium mb-2">Punteggio: <span id="selectedCoherenceScore" class="font-bold">--</span></p>
-                        <p class="text-slate-700">Motivazione: <span id="selectedCoherenceMotivation">Nessuna motivazione disponibile.</span></p>
-                    </div>
-                    <div id="noCoherenceData" class="hidden text-center text-slate-500 mt-4">Nessun dato di coerenza disponibile per questo pitch.</div>
+                    <div id="noRankingData" class="hidden text-center text-slate-500 mt-4" data-i18n-key="no_ranking_data">Nessun dato di ranking disponibile.</div>
                 </section>
             </div>
         </div>
-
-        <!-- Deal Flow: Ranking Investitori -->
-        <div id="dealFlowDashboard" class="flex flex-col w-full hidden">
-            <header class="w-full container-padding mb-8 pt-8">
-                <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200">
-                    <h2 class="text-2xl font-bold text-slate-900 mb-4 sm:mb-0">
-                        Deal Flow: Ranking Pitch per Investitori
-                    </h2>
-                     <div class="flex space-x-4">
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="pitchFilter" value="my" checked class="form-radio text-teal-600 h-5 w-5">
-                            <span class="ml-2 text-slate-700 font-medium">I Miei Pitch</span>
-                        </label>
-                    </div>
-                </div>
-            </header>
-            
-            <section class="card w-full">
-                <h3 class="text-xl font-semibold text-slate-800 mb-4">Classifica dei Pitch Deck (Score Finale Regolato)</h3>
-                <p class="text-slate-600 mb-6">
-                    Questo grafico mostra tutti i pitch deck analizzati, ordinati in base al loro "Score Finale Regolato" in ordine decrescente. I pitch con i punteggi più alti sono in cima, rappresentando le opportunità più promettenti.
-                </p>
-                <div class="flex-grow flex items-center justify-center min-h-[300px]">
-                    <div class="chart-container">
-                        <canvas id="rankingChart"></canvas>
-                    </div>
-                </div>
-                <div id="noRankingData" class="hidden text-center text-slate-500 mt-4">Nessun dato di ranking disponibile.</div>
-            </section>
-        </div>
     </main>
 
-    <!-- Script JavaScript -->
+    <div id="uploadModal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg mx-4">
+            <h2 class="text-2xl font-semibold text-slate-800 mb-6" data-i18n-key="upload_modal_title">Carica un Nuovo Pitch Deck</h2>
+            <p class="text-slate-600 mb-4" data-i18n-key="upload_modal_desc">Seleziona un file PDF da caricare per l'analisi.</p>
+            <input type="file" id="fileInput" accept=".pdf" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <button id="uploadFileBtn" class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200 flex items-center justify-center">
+                <span class="material-icons-outlined text-xl mr-2">cloud_upload</span>
+                <span data-i18n-key="upload_file_button">Carica File</span>
+            </button>
+            <p id="uploadStatusMessage" class="mt-4 text-center text-slate-700"></p>
+            <button id="closeUploadModalBtn" class="mt-6 w-full px-6 py-3 bg-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-opacity-50 transition duration-200" data-i18n-key="close_button">
+                Chiudi
+            </button>
+        </div>
+    </div>
+
     <script type="module">
         // Elementi UI globali
         const loginSection = document.getElementById('loginSection');
+        const registerSection = document.getElementById('registerSection'); 
         const dashboardContent = document.getElementById('dashboardContent');
         const emailInput = document.getElementById('emailInput');
         const passwordInput = document.getElementById('passwordInput');
@@ -366,8 +395,26 @@
         const userEmailSpan = document.getElementById('userEmail');
         const navHome = document.getElementById('navHome');
         const navDealFlow = document.getElementById('navDealFlow');
+        const profileCircle = document.getElementById('profileCircle'); 
+        const uploadPitchButton = document.getElementById('uploadPitchButton'); 
 
-        // Sezioni della dashboard
+        // Elementi del form di registrazione
+        const showRegisterFormLink = document.getElementById('showRegisterForm');
+        const showLoginFormLink = document.getElementById('showLoginForm');
+        const registerEmailInput = document.getElementById('registerEmail');
+        const registerPasswordInput = document.getElementById('registerPassword');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const registerButton = document.getElementById('registerButton');
+        const registerError = document.getElementById('registerError');
+
+        // NUOVO: Elementi del Modal di Caricamento
+        const uploadModal = document.getElementById('uploadModal');
+        const closeUploadModalBtn = document.getElementById('closeUploadModalBtn');
+        const fileInput = document.getElementById('fileInput');
+        const uploadFileBtn = document.getElementById('uploadFileBtn');
+        const uploadStatusMessage = document.getElementById('uploadStatusMessage');
+
+        // Sezioni della Dashboard
         const homeDashboard = document.getElementById('homeDashboard');
         const dealFlowDashboard = document.getElementById('dealFlowDashboard');
 
@@ -375,10 +422,10 @@
         const documentSelector = document.getElementById('documentSelector');
         const variablesTableBody = document.getElementById('variablesTableBody');
         const variablesChartCanvas = document.getElementById('variablesChart');
-        // Aggiunti elementi per il dropdown di coerenza
         const coherencePairSelector = document.getElementById('coherencePairSelector');
         const selectedCoherenceScore = document.getElementById('selectedCoherenceScore');
         const selectedCoherenceMotivation = document.getElementById('selectedCoherenceMotivation');
+        const coherenceDoughnutChartCanvas = document.getElementById('coherenceDoughnutChart'); 
 
         const noDataChartDiv = document.getElementById('noDataChart');
         const noDataTableDiv = document.getElementById('noDataTable');
@@ -400,51 +447,310 @@
         // Overlay di caricamento globale
         const loadingOverlay = document.getElementById('loadingOverlay');
 
-        let variablesChart; // Istanza del grafico a barre delle variabili
-        let rankingChart;   // Istanza del grafico a barre del ranking
-        let loadedAllData = {}; // Oggetto per memorizzare tutti i dati recuperati dall'API
+        let variablesChart = null; 
+        let rankingChart = null;   
+        let coherenceDoughnutChart = null; 
+        let loadedAllData = {}; 
 
-        // Firebase Auth e Firestore (recuperati dalla window)
+        // Funzioni (definite globalmente nello script del modulo precedente)
         const auth = window.firebaseAuth;
         const setPersistence = window.setPersistence;
         const browserSessionPersistence = window.browserSessionPersistence;
         const signInWithEmailAndPassword = window.signInWithEmailAndPassword;
         const signOut = window.signOut;
         const onAuthStateChanged = window.onAuthStateChanged;
-        const db = window.firebaseDb; // Firestore instance
-        const APP_ID = window.APP_ID; // App ID for Firestore paths
+        const createUserWithEmailAndPassword = window.createUserWithEmailAndPassword; 
+        const db = window.firebaseDb; 
+        const setDoc = window.setDoc; 
+        const APP_ID = window.APP_ID; 
+        const docRef = window.doc; 
+        const storage = window.firebaseStorage; 
+        const storageRef = window.ref;
+        const uploadBytes = window.uploadBytes;
+        const PITCH_INPUT_BUCKET = window.PITCH_INPUT_BUCKET; 
 
-        // Funzione per mostrare una sezione e nascondere le altre
-        function showSection(sectionId) {
+        // --- Configurazione Internazionalizzazione (i18n) ---
+        const translations = {
+            it: {
+                app_title: "VALIDATR™ - Dashboard Completa",
+                nav_home: "Home (Dashboard Dettagliata)",
+                nav_deal_flow: "Deal Flow (Ranking Investitori)",
+                upload_pitch_button: "Carica Pitch",
+                welcome_message: "Benvenuto",
+                logout_button: "Logout",
+                login_title: "Accedi a VALIDATR™",
+                email_placeholder: "Email",
+                password_placeholder: "Password",
+                login_button_text: "Accedi",
+                no_account_prompt: "Non hai un account? ",
+                register_here_link: "Registrati qui",
+                register_title: "Registrati a VALIDATR™",
+                confirm_password_placeholder: "Conferma Password",
+                register_button_text: "Registrati",
+                already_have_account_prompt: "Hai già un account? ",
+                login_here_link: "Accedi qui",
+                loading_data_message: "Caricamento dati...",
+                detailed_dashboard_title: "Dashboard Analisi Dettagliata",
+                select_pitch_deck_label: "Seleziona Pitch Deck:",
+                no_pitch_deck_available: "Nessun Pitch Deck disponibile",
+                general_summary_title: "Riepilogo Generale del Pitch Deck",
+                score_finale_regolato_label: "Score Finale Regolato",
+                indice_coerenza_label: "Indice di Coerenza",
+                classe_pitch_label: "Classe Pitch",
+                no_summary_data: "Nessun dato di riepilogo disponibile per questo pitch.",
+                variables_scores_title: "Punteggi Variabili Valutate",
+                variables_chart_desc: "Questo grafico a barre mostra i punteggi (0-100) assegnati a ciascuna delle 7 variabili chiave del pitch deck selezionato. Passa il mouse sulle barre per leggere la motivazione.",
+                variables_details_title: "Dettaglio Variabili e Motivazioni",
+                variables_table_desc: "Questa tabella fornisce i punteggi numerici e le motivazioni dettagliate per ogni variabile.",
+                variable_header: "Variabile",
+                score_header: "Punteggio",
+                motivation_header: "Motivazione",
+                coherence_analysis_title: "Analisi Coerenza tra Variabili",
+                coherence_section_desc: "Questa sezione mostra la distribuzione di coerenza tra le variabili e i dettagli per ogni coppia.",
+                select_pair_label: "Seleziona Coppia:",
+                score_label: "Punteggio:",
+                motivation_label: "Motivazione:",
+                no_coherence_data: "Nessun dato di coerenza disponibile per questo pitch.",
+                deal_flow_title: "Deal Flow: Ranking Pitch per Investitori",
+                my_pitches_radio: "I Miei Pitch",
+                ranking_chart_title: "Classifica dei Pitch Deck (Score Finale Regolato)",
+                ranking_chart_desc: "Questo grafico mostra tutti i pitch deck analizzati, ordinati in base al loro \"Score Finale Regolato\" in ordine decrescente. I pitch con i punteggi più alti sono in cima, rappresentando le opportunità più promettenti.",
+                no_ranking_data: "Nessun dato di ranking disponibile.",
+                upload_modal_title: "Carica un Nuovo Pitch Deck",
+                upload_modal_desc: "Seleziona un file PDF da caricare per l'analisi.",
+                upload_file_button: "Carica File",
+                close_button: "Chiudi",
+                upload_select_file: "Seleziona un file PDF.",
+                upload_must_be_pdf: "Il file deve essere un PDF.",
+                upload_must_be_logged_in: "Devi essere loggato per caricare il file.",
+                upload_in_progress: "Caricamento in corso...",
+                upload_completed: "Caricamento completato! L'analisi inizierà a breve.",
+                upload_error: "Errore di caricamento:",
+                high_coherence: "Alta Coerenza",
+                low_coherence: "Bassa Coerenza",
+                login_missing_credentials: "Per favore, inserisci email e password.",
+                login_generic_error: "Errore durante l'accesso. Riprova.",
+                login_invalid_email: "Email non valida.",
+                login_user_disabled: "Il tuo account è stato disabilitato.",
+                login_invalid_credentials: "Credenziali non valide. Controlla email e password.",
+                login_too_many_requests: "Troppi tentativi di accesso falliti. Riprova più tardi.",
+                error_prefix: "Errore",
+                logout_error_prefix: "Errore durante il logout",
+                register_missing_fields: "Per favore, compila tutti i campi.",
+                register_password_too_short: "La password deve essere lunga almeno 6 caratteri.",
+                register_passwords_not_match: "Le password non corrispondono.",
+                register_generic_error: "Errore durante la registrazione. Riprova.",
+                register_email_in_use: "Questa email è già in uso.",
+                register_invalid_email: "Email non valida.",
+                register_weak_password: "La password è troppo debole. Deve essere più robusta.",
+                no_motivation_available: "Nessuna motivazione disponibile.",
+                login_to_view_dashboard: "Accedi per visualizzare la dashboard.",
+                no_ranking_data_for_pitches: "Nessun dato di ranking disponibile per {filterType}.",
+                // NUOVE CHIAVI AGGIUNTE PER I DATI DINAMICI (basate sui nomi esatti da Firestore)
+                variable_Problema: "Problema",
+                variable_Target: "Target",
+                variable_Soluzione: "Soluzione",
+                variable_Mercato: "Mercato",
+                variable_MVP: "MVP",
+                variable_Team: "Team",
+                variable_RitornoAtteso: "Ritorno Atteso", 
+                class_INVESTIRE: "INVESTIRE",
+                class_MONITORARE: "MONITORARE",
+                class_VERIFICARE: "VERIFICARE",
+                class_PASS: "PASS",
+                chart_score_label: "Punteggio (0-100)",
+                chart_variable_label: "Variabile",
+                chart_pitch_deck_label: "Pitch Deck"
+            },
+            en: {
+                app_title: "VALIDATR™ - Complete Dashboard",
+                nav_home: "Home (Detailed Dashboard)",
+                nav_deal_flow: "Deal Flow (Investor Ranking)",
+                upload_pitch_button: "Upload Pitch",
+                welcome_message: "Welcome",
+                logout_button: "Logout",
+                login_title: "Login to VALIDATR™",
+                email_placeholder: "Email",
+                password_placeholder: "Password",
+                login_button_text: "Login",
+                no_account_prompt: "Don't have an account? ",
+                register_here_link: "Register here",
+                register_title: "Register for VALIDATR™",
+                confirm_password_placeholder: "Confirm Password",
+                register_button_text: "Register",
+                already_have_account_prompt: "Already have an account? ",
+                login_here_link: "Login here",
+                loading_data_message: "Loading data...",
+                detailed_dashboard_title: "Detailed Analysis Dashboard",
+                select_pitch_deck_label: "Select Pitch Deck:",
+                no_pitch_deck_available: "No Pitch Deck available",
+                general_summary_title: "General Pitch Deck Summary",
+                score_finale_regolato_label: "Final Adjusted Score",
+                indice_coerenza_label: "Coherence Index",
+                classe_pitch_label: "Pitch Class",
+                no_summary_data: "No summary data available for this pitch.",
+                variables_scores_title: "Evaluated Variable Scores",
+                variables_chart_desc: "This bar chart shows the scores (0-100) assigned to each of the 7 key pitch deck variables. Hover over the bars to read the motivation.",
+                variables_details_title: "Variable Details and Motivations",
+                variables_table_desc: "This table provides the numerical scores and detailed motivations for each variable.",
+                variable_header: "Variable",
+                score_header: "Score",
+                motivation_header: "Motivation",
+                coherence_analysis_title: "Coherence Analysis Between Variables",
+                coherence_section_desc: "This section shows the coherence distribution between variables and details for each pair.",
+                select_pair_label: "Select Pair:",
+                score_label: "Score:",
+                motivation_label: "Motivation:",
+                no_coherence_data: "No coherence data available for this pitch.",
+                deal_flow_title: "Deal Flow: Investor Pitch Ranking",
+                my_pitches_radio: "My Pitches",
+                ranking_chart_title: "Pitch Deck Ranking (Final Adjusted Score)",
+                ranking_chart_desc: "This chart displays all analyzed pitch decks, ordered by their \"Final Adjusted Score\" in descending order. Pitches with higher scores are at the top, representing the most promising opportunities.",
+                no_ranking_data: "No ranking data available.",
+                upload_modal_title: "Upload New Pitch Deck",
+                upload_modal_desc: "Select a PDF file to upload for analysis.",
+                upload_file_button: "Upload File",
+                close_button: "Close",
+                upload_select_file: "Select a PDF file.",
+                upload_must_be_pdf: "The file must be a PDF.",
+                upload_must_be_logged_in: "You must be logged in to upload the file.",
+                upload_in_progress: "Upload in progress...",
+                upload_completed: "Upload complete! Analysis will start shortly.",
+                upload_error: "Upload error:",
+                high_coherence: "High Coherence",
+                low_coherence: "Low Coherence",
+                login_missing_credentials: "Please enter email and password.",
+                login_generic_error: "Error during login. Please try again.",
+                login_invalid_email: "Invalid email.",
+                login_user_disabled: "Your account has been disabled.",
+                login_invalid_credentials: "Invalid credentials. Please check your email and password.",
+                login_too_many_requests: "Too many failed login attempts. Please try again later.",
+                error_prefix: "Error",
+                logout_error_prefix: "Error during logout",
+                register_missing_fields: "Please fill in all fields.",
+                register_password_too_short: "Password must be at least 6 characters long.",
+                register_passwords_not_match: "Passwords do not match.",
+                register_generic_error: "Error during registration. Please try again.",
+                register_email_in_use: "This email is already in use.",
+                register_invalid_email: "Invalid email.",
+                register_weak_password: "Password is too weak. It needs to be more robust.",
+                no_motivation_available: "No motivation available.",
+                login_to_view_dashboard: "Please log in to view the dashboard.",
+                no_ranking_data_for_pitches: "No ranking data available for {filterType}.",
+                // NUOVE CHIAVI AGGIUNTE PER I DATI DINAMICI
+                variable_Problema: "Problem",
+                variable_Target: "Target",
+                variable_Soluzione: "Solution",
+                variable_Mercato: "Market",
+                variable_MVP: "MVP",
+                variable_Team: "Team",
+                variable_RitornoAtteso: "Expected Return", 
+                class_INVESTIRE: "INVEST",
+                class_MONITORARE: "MONITOR",
+                class_VERIFICARE: "VERIFY",
+                class_PASS: "PASS",
+                chart_score_label: "Score (0-100)",
+                chart_variable_label: "Variable",
+                chart_pitch_deck_label: "Pitch Deck"
+            }
+        };
+
+        let currentLanguage = 'it'; // Default language
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('language', lang); // Save language preference
+            document.documentElement.lang = lang; // Set lang attribute on <html>
+
+            // Update all elements with data-i18n-key
+            document.querySelectorAll('[data-i18n-key]').forEach(element => {
+                const key = element.getAttribute('data-i18n-key');
+                if (translations[lang] && translations[lang][key]) {
+                    // Handle placeholder attributes separately
+                    if (element.tagName === 'INPUT' && element.hasAttribute('placeholder')) {
+                        element.setAttribute('placeholder', translations[lang][key]);
+                    } else if (element.tagName === 'IMG' && element.hasAttribute('alt')) {
+                        element.setAttribute('alt', translations[lang][key]);
+                    } else if (element.tagName === 'A' && element.hasAttribute('title')) {
+                        element.setAttribute('title', translations[lang][key]);
+                    }
+                    else {
+                        element.textContent = translations[lang][key];
+                    }
+                }
+            });
+
+            // Update specific dynamic texts (messages, etc.)
+            if (window.firebaseAuth.currentUser) {
+                userEmailSpan.textContent = window.firebaseAuth.currentUser.email; // Email text content is NOT translated
+                profileCircle.textContent = window.firebaseAuth.currentUser.email ? window.firebaseAuth.currentUser.email.charAt(0).toUpperCase() : 'U';
+            }
+
+            // Update messages
+            noDataChartDiv.textContent = translations[currentLanguage].no_chart_data;
+            noDataTableDiv.textContent = translations[currentLanguage].no_table_data;
+            noCoreMetricsDataDiv.textContent = translations[currentLanguage].no_summary_data;
+            noCoherenceDataDiv.textContent = translations[currentLanguage].no_coherence_data;
+            noRankingDataDiv.textContent = translations[currentLanguage].no_ranking_data;
+
+            // Re-render charts to update labels if needed
+            if (window.firebaseAuth.currentUser && Object.keys(loadedAllData).length > 0) {
+                // Se c'è un documento selezionato, lo aggiorna, altrimenti prende il primo disponibile
+                const currentSelectedDocId = documentSelector.value;
+                if (currentSelectedDocId && loadedAllData[currentSelectedDocId]) {
+                    updateMainDashboard(currentSelectedDocId);
+                } else if (Object.keys(loadedAllData).length > 0) {
+                    updateMainDashboard(Object.keys(loadedAllData)[0]); // Se non c'è selezione, prendi il primo
+                } else {
+                    clearMainDashboard(); // Nessun dato, pulisci
+                }
+
+                fetchAndRenderRanking(document.querySelector('input[name="pitchFilter"]:checked').value); // Re-render ranking
+            }
+        }
+
+        function loadLanguage() {
+            let lang = localStorage.getItem('language');
+            if (!lang) {
+                // Detect browser language and use 'it' or 'en'
+                const browserLang = navigator.language.split('-')[0];
+                lang = (browserLang === 'it' || browserLang === 'en') ? browserLang : 'it';
+            }
+            document.getElementById('languageSelector').value = lang; // Set dropdown value
+            setLanguage(lang);
+        }
+
+        // Function to display an authentication section and hide others
+        function showAuthSection(sectionId) {
+            loginSection.classList.add('hidden');
+            registerSection.classList.add('hidden');
+            if (sectionId === 'login') {
+                loginSection.classList.remove('hidden');
+            } else if (sectionId === 'register') {
+                registerSection.classList.remove('hidden');
+            }
+        }
+
+        // Function to display a dashboard section and hide others
+        function showDashboardSection(sectionId) {
             homeDashboard.classList.add('hidden');
             dealFlowDashboard.classList.add('hidden');
             if (sectionId === 'home') {
                 homeDashboard.classList.remove('hidden');
-                // Ricarica la dashboard principale se l'utente è autenticato e ci sono dati
-                // Chiamiamo fetchDataInBothDashboards per assicurarci che loadedAllData sia popolato
                 if (auth.currentUser) {
-                    fetchDataInBothDashboards(auth.currentUser).then(() => {
-                        const selectedDocId = documentSelector.value || Object.keys(loadedAllData)[0];
-                        if (selectedDocId) {
-                            updateMainDashboard(selectedDocId);
-                        } else {
-                            clearMainDashboard();
-                        }
-                    });
+                    fetchDataInBothDashboards(auth.currentUser);
                 }
             } else if (sectionId === 'dealFlow') {
                 dealFlowDashboard.classList.remove('hidden');
-                // Ricarica il ranking se l'utente è autenticato. Ora recupera sempre "my" pitch.
                 if (auth.currentUser) {
-                    // Non c'è più bisogno di leggere il valore del radio button, sarà sempre "my"
-                    fetchAndRenderRanking('my'); 
+                    fetchAndRenderRanking('my');
                 }
             }
         }
 
-        // Funzione per avvolgere le etichette lunghe nel grafico
+        // Function to wrap long labels in charts
         function wrapLabel(label, maxCharPerLine) {
-            if (typeof label !== 'string') return label; // Assicurati che sia una stringa
+            if (typeof label !== 'string') return label;
             if (label.length <= maxCharPerLine) return label;
             let wrappedLabel = [];
             let words = label.split(' ');
@@ -462,8 +768,8 @@
             });
             return wrappedLabel;
         }
-        
-        // Funzione per pulire la dashboard principale
+
+        // Function to clear the main dashboard
         function clearMainDashboard() {
             finalAdjustedScoreValue.textContent = '--';
             coherenceIndexValue.textContent = '--';
@@ -475,56 +781,91 @@
             coherenceIndexIcon.textContent = 'alt_route';
             pitchClassIcon.textContent = 'emoji_events';
 
-
-            pitchClassCard.classList.remove('bg-class-verde', 'bg-class-giallo', 'bg-class-rosso');
+            pitchClassCard.classList.remove('bg-class-investire', 'bg-class-monitorare', 'bg-class-verificare', 'bg-class-pass');
             pitchClassCard.classList.add('bg-class-default-scorecard');
-            
-            variablesChartCanvas.style.display = 'none';
+
             variablesTableBody.innerHTML = '';
-            
-            // Clear coherence dropdown and details
-            coherencePairSelector.innerHTML = '<option value="">Seleziona una coppia</option>';
+
+            coherencePairSelector.innerHTML = '<option value="">' + translations[currentLanguage].select_pair_label + '</option>';
             coherencePairSelector.disabled = true;
             selectedCoherenceScore.textContent = '--';
-            selectedCoherenceMotivation.textContent = 'Nessuna motivazione disponibile.';
+            selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
 
             noDataChartDiv.classList.remove('hidden');
             noDataTableDiv.classList.remove('hidden');
             noCoreMetricsDataDiv.classList.remove('hidden');
             noCoherenceDataDiv.classList.remove('hidden');
 
-            noDataChartDiv.textContent = 'Nessun dato disponibile per il grafico.';
-            noDataTableDiv.textContent = 'Nessun dato disponibile per la tabella.';
-            noCoreMetricsDataDiv.textContent = 'Nessun dato di riepilogo disponibile per questo pitch.';
-            noCoherenceDataDiv.textContent = 'Nessun dato di coerenza disponibile per questo pitch.';
+            noDataChartDiv.textContent = translations[currentLanguage].no_chart_data;
+            noDataTableDiv.textContent = translations[currentLanguage].no_table_data;
+            noCoreMetricsDataDiv.textContent = translations[currentLanguage].no_summary_data;
+            noCoherenceDataDiv.textContent = translations[currentLanguage].no_coherence_data;
 
-            if (variablesChart) {
-                variablesChart.destroy();
-                variablesChart = null;
-            }
+            if (variablesChart) { variablesChart.destroy(); variablesChart = null; variablesChartCanvas.style.display = 'none'; }
+            if (coherenceDoughnutChart) { coherenceDoughnutChart.destroy(); coherenceDoughnutChart = null; coherenceDoughnutChartCanvas.style.display = 'none'; }
         }
 
-        // Funzione per aggiornare la dashboard principale (variabili dettagliate)
+        // Function to update the main dashboard (detailed variables)
         function updateMainDashboard(selectedDocumentId) {
             const documentData = loadedAllData[selectedDocumentId];
+
+            console.log("DEBUG: --- Inizio updateMainDashboard ---");
+            console.log("DEBUG: selectedDocumentId:", selectedDocumentId);
+            console.log("DEBUG: documentData (completo):", documentData); // VEDI QUI LA STRUTTURA GENERALE
+            
+            // Controlla la sezione core_metrics
+            console.log("DEBUG: documentData.core_metrics:", documentData.core_metrics);
+            if (documentData.core_metrics) {
+                console.log("DEBUG: coreMetrics.final_adjusted_score:", documentData.core_metrics.final_adjusted_score);
+                console.log("DEBUG: coreMetrics.classe_pitch:", documentData.core_metrics.classe_pitch);
+            }
+
+            // Controlla la sezione variables
+            console.log("DEBUG: documentData.variables:", documentData.variables);
+            if (documentData.variables && documentData.variables.length > 0) {
+                console.log("DEBUG: Prima variabile:", documentData.variables[0]);
+                console.log("DEBUG: Motivazione della prima variabile:", documentData.variables[0].motivazione_variabile);
+                console.log("DEBUG: Motivazione della prima variabile (IT):", documentData.variables[0].motivazione_variabile.it);
+                console.log("DEBUG: Motivazione della prima variabile (EN):", documentData.variables[0].motivazione_variabile.en);
+            }
+
+            // Controlla la sezione coherence_pairs
+            console.log("DEBUG: documentData.coherence_pairs:", documentData.coherence_pairs);
+            if (documentData.coherence_pairs && documentData.coherence_pairs.length > 0) {
+                console.log("DEBUG: Prima coppia di coerenza:", documentData.coherence_pairs[0]);
+                console.log("DEBUG: Motivazione della prima coppia di coerenza:", documentData.coherence_pairs[0].motivazione_coppia);
+                console.log("DEBUG: Motivazione della prima coppia di coerenza (IT):", documentData.coherence_pairs[0].motivazione_coppia.it);
+                console.log("DEBUG: Motivazione della prima coppia di coerenza (EN):", documentData.coherence_pairs[0].motivazione_coppia.en);
+            }
+            console.log("DEBUG: currentLanguage:", currentLanguage);
+            console.log("DEBUG: --- Fine Inizio updateMainDashboard ---");
+
+            noCoreMetricsDataDiv.classList.add('hidden');
+            noDataChartDiv.classList.add('hidden');
+            noDataTableDiv.classList.add('hidden');
+            noCoherenceDataDiv.classList.add('hidden');
+            variablesChartCanvas.style.display = 'none';
+            if (coherenceDoughnutChartCanvas) coherenceDoughnutChartCanvas.style.display = 'none';
 
             if (!documentData) {
                 clearMainDashboard();
                 return;
             }
 
-            // Aggiorna le scorecard di riepilogo (usa calcoli_aggiuntivi)
-             if (documentData.core_metrics) {
+            // Update summary scorecards (using core_metrics)
+            if (documentData.core_metrics) {
                 const coreMetrics = documentData.core_metrics;
                 finalAdjustedScoreValue.textContent = coreMetrics.final_adjusted_score ? coreMetrics.final_adjusted_score.toFixed(2) : '--';
                 coherenceIndexValue.textContent = coreMetrics.indice_coerenza ? coreMetrics.indice_coerenza.toFixed(2) : '--';
-                pitchClassValue.textContent = coreMetrics.classe_pitch || '--'; // Usa 'classe_pitch' da Firestore
 
-                // Reset scorecard background classes
-                const scorecardClasses = ['bg-class-verde', 'bg-class-giallo', 'bg-class-rosso', 'bg-class-default-scorecard'];
+                // Translate Pitch Class
+                const pitchClassKey = `class_${coreMetrics.classe_pitch}`;
+                pitchClassValue.textContent = translations[currentLanguage][pitchClassKey] || coreMetrics.classe_pitch || '--';
+
+                const scorecardClasses = ['bg-class-investire', 'bg-class-monitorare', 'bg-class-verificare', 'bg-class-pass', 'bg-class-default-scorecard'];
                 pitchClassCard.classList.remove(...scorecardClasses);
 
-                // Update icon colors and card background based on class
+                // Reintegrated icon and card background color logic based on pitch class
                 finalAdjustedScoreIcon.className = 'score-icon';
                 coherenceIndexIcon.className = 'score-icon';
                 pitchClassIcon.className = 'score-icon';
@@ -532,65 +873,74 @@
                 coherenceIndexIcon.textContent = 'alt_route';
                 pitchClassIcon.textContent = 'emoji_events';
 
-
                 const currentClass = coreMetrics.classe_pitch;
                 if (currentClass === 'INVESTIRE') {
-                finalAdjustedScoreIcon.classList.add('score-class-investire'); // Se vuoi colorare le icone
-                    // coherenceIndexIcon.classList.add('score-class-investire'); // Se vuoi colorare le icone
-                    // pitchClassIcon.classList.add('score-class-investire'); // Se vuoi colorare le icone
+                    finalAdjustedScoreIcon.classList.add('score-class-investire');
+                    coherenceIndexIcon.classList.add('score-class-investire');
+                    pitchClassIcon.classList.add('score-class-investire');
                     pitchClassCard.classList.add('bg-class-investire');
                 } else if (currentClass === 'MONITORARE') {
-                    // finalAdjustedScoreIcon.classList.add('score-class-monitorare');
-                    // coherenceIndexIcon.classList.add('score-class-monitorare');
-                    // pitchClassIcon.classList.add('score-class-monitorare');
+                    finalAdjustedScoreIcon.classList.add('score-class-monitorare');
+                    coherenceIndexIcon.classList.add('score-class-monitorare');
+                    pitchClassIcon.classList.add('score-class-monitorare');
                     pitchClassCard.classList.add('bg-class-monitorare');
                 } else if (currentClass === 'VERIFICARE') {
-                    // finalAdjustedScoreIcon.classList.add('score-class-verificare');
-                    // coherenceIndexIcon.classList.add('score-class-verificare');
-                    // pitchClassIcon.classList.add('score-class-verificare');
+                    finalAdjustedScoreIcon.classList.add('score-class-verificare');
+                    coherenceIndexIcon.classList.add('score-class-verificare');
+                    pitchClassIcon.classList.add('score-class-verificare');
                     pitchClassCard.classList.add('bg-class-verificare');
                 } else if (currentClass === 'PASS') {
-                    // finalAdjustedScoreIcon.classList.add('score-class-pass');
-                    // coherenceIndexIcon.classList.add('score-class-pass');
-                    // pitchClassIcon.classList.add('score-class-pass');
+                    finalAdjustedScoreIcon.classList.add('score-class-pass');
+                    coherenceIndexIcon.classList.add('score-class-pass');
+                    pitchClassIcon.classList.add('score-class-pass');
                     pitchClassCard.classList.add('bg-class-pass');
-                } else { // Default o non classificato
-                    // finalAdjustedScoreIcon.classList.add('score-class-default');
-                    // coherenceIndexIcon.classList.add('score-class-default');
-                    // pitchClassIcon.classList.add('score-class-default');
+                } else {
+                    finalAdjustedScoreIcon.classList.add('score-class-default');
+                    coherenceIndexIcon.classList.add('score-class-default');
+                    pitchClassIcon.classList.add('score-class-default');
                     pitchClassCard.classList.add('bg-class-default-scorecard');
                 }
-                noCoreMetricsDataDiv.classList.add('hidden');
             } else {
                 noCoreMetricsDataDiv.classList.remove('hidden');
             }
 
-            // Update Variables Chart and Table (usa variabili_valutate)
+            // Update Variables Chart and Table (use variables)
             if (documentData.variables && documentData.variables.length > 0) {
                 variablesChartCanvas.style.display = 'block';
                 noDataChartDiv.classList.add('hidden');
                 noDataTableDiv.classList.add('hidden');
 
-                const labels = documentData.variables.map(v => wrapLabel(v.nome_variabile, 16));
+                const labels = documentData.variables.map(v => {
+                    const translationKey = `variable_${v.nome_variabile.replace(/\s/g, '')}`;
+                    return wrapLabel(translations[currentLanguage][translationKey] || v.nome_variabile, 16);
+                });
                 const scores = documentData.variables.map(v => v.punteggio_variabile);
                 const motivations = documentData.variables.map(v => v.motivazione_variabile);
+
+                // Reintegrated barColor and borderColor logic based on pitch class
+                const barColor = (score) => {
+                    const currentClass = documentData.core_metrics?.classe_pitch;
+                    if (currentClass === 'INVESTIRE') return '#10b981'; /* emerald-500 */
+                    if (currentClass === 'MONITORARE') return '#f59e0b'; /* amber-500 */
+                    if (currentClass === 'VERIFICARE') return '#f97316'; /* orange-600 */
+                    if (currentClass === 'PASS') return '#ef4444'; /* red-500 */
+                    return '#cbd5e1'; /* slate-300 */
+                };
+                const borderColor = (score) => {
+                    const currentClass = documentData.core_metrics?.classe_pitch;
+                    if (currentClass === 'INVESTIRE') return '#059669'; /* emerald-600 */
+                    if (currentClass === 'MONITORARE') return '#d97706'; /* amber-600 */
+                    if (currentClass === 'VERIFICARE') return '#ea580c'; /* orange-700 */
+                    if (currentClass === 'PASS') return '#dc2626'; /* red-600 */
+                    return '#94a3b8'; /* slate-400 */
+                };
 
                 if (variablesChart) {
                     variablesChart.data.labels = labels;
                     variablesChart.data.datasets[0].data = scores;
                     variablesChart.data.datasets[0].motivations = motivations;
-                    variablesChart.data.datasets[0].backgroundColor = scores.map(score => {
-                        if (score >= 85) return '#0d9488'; // teal-600 (verde)
-                        if (score >= 65) return '#fbbf24'; // amber-400 (giallo)
-                        if (score >= 40) return '#ef4444'; // red-500 (rosso)
-                        return '#cbd5e1'; // slate-300 (zero/grigio)
-                    });
-                    variablesChart.data.datasets[0].borderColor = scores.map(score => {
-                        if (score >= 85) return '#0f766e'; // teal-700
-                        if (score >= 65) return '#f59e0b'; // amber-500
-                        if (score >= 40) return '#dc2626'; // red-600
-                        return '#94a3b8'; // slate-400
-                    });
+                    variablesChart.data.datasets[0].backgroundColor = scores.map(barColor); // Use the new barColor function
+                    variablesChart.data.datasets[0].borderColor = scores.map(borderColor);   // Use the new borderColor function
                     variablesChart.update();
                 } else {
                     const ctx = variablesChartCanvas.getContext('2d');
@@ -599,79 +949,37 @@
                         data: {
                             labels: labels,
                             datasets: [{
-                                label: 'Punteggio',
+                                label: translations[currentLanguage].score_header,
                                 data: scores,
-                                backgroundColor: scores.map(score => {
-                                    if (score >= 85) return '#0d9488';
-                                    if (score >= 65) return '#fbbf24';
-                                    if (score >= 40) return '#ef4444';
-                                    return '#cbd5e1';
-                                }),
-                                borderColor: scores.map(score => {
-                                    if (score >= 85) return '#0f766e';
-                                    if (score >= 65) return '#f59e0b';
-                                    if (score >= 40) return '#dc2626';
-                                    return '#94a3b8';
-                                }),
+                                backgroundColor: scores.map(barColor), // Use the new barColor function
+                                borderColor: scores.map(borderColor),   // Use the new borderColor function
                                 borderWidth: 1,
                                 motivations: motivations
                             }]
                         },
                         options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: false,
+                            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                             plugins: {
                                 tooltip: {
                                     callbacks: {
-                                        title: function(context) {
-                                            return context[0].label.join(' ');
-                                        },
-                                        label: function(context) {
-                                            let label = context.dataset.label || '';
-                                            if (label) {
-                                                label += ': ';
-                                            }
-                                            if (context.parsed.x !== null) {
-                                                label += context.parsed.x;
-                                            }
-                                            return label;
-                                        },
-                                        afterLabel: function(context) {
+                                        title: (context) => Array.isArray(context[0].label) ? context[0].label.join(' ') : context[0].label,
+                                        label: (context) => `${translations[currentLanguage].score_header}: ${context.parsed.x}`,
+                                        afterLabel: (context) => {
                                             const motivation = context.dataset.motivations[context.dataIndex];
-                                            return 'Motivazione: ' + motivation;
+                                            return `${translations[currentLanguage].motivation_header}: ${(motivation[currentLanguage] || motivation.it || translations[currentLanguage].no_motivation_available)}`;
                                         }
                                     }
                                 }
                             },
                             scales: {
                                 x: {
-                                    beginAtZero: true,
-                                    max: 100,
-                                    title: {
-                                        display: true,
-                                        text: 'Punteggio (0-100)',
-                                        color: '#475569'
-                                    },
-                                    ticks: {
-                                        color: '#475569'
-                                    },
-                                    grid: {
-                                        color: '#e2e8f0'
-                                    }
+                                    beginAtZero: true, max: 100,
+                                    title: { display: true, text: translations[currentLanguage].chart_score_label, color: '#475569' },
+                                    ticks: { color: '#475569' }, grid: { color: '#e2e8f0' }
                                 },
                                 y: {
-                                    title: {
-                                        display: true,
-                                        text: 'Variabile',
-                                        color: '#475569'
-                                    },
-                                    ticks: {
-                                        color: '#475569'
-                                    },
-                                    grid: {
-                                        color: '#e2e8f0'
-                                    }
+                                    title: { display: true, text: translations[currentLanguage].chart_variable_label, color: '#475569' },
+                                    ticks: { color: '#475569' }, grid: { color: '#e2e8f0' }
                                 }
                             }
                         }
@@ -681,14 +989,18 @@
                 // Update Variables Table
                 variablesTableBody.innerHTML = '';
                 documentData.variables.forEach(v => {
-                    const row = variablesTableBody.insertRow();
-                    row.className = 'text-slate-700';
-                    const cellNome = row.insertCell();
-                    cellNome.textContent = v.nome_variabile; // Usa 'nome_variabile' da Firestore
-                    const cellPunteggio = row.insertCell();
-                    cellPunteggio.textContent = v.punteggio_variabile; // Usa 'punteggio_variabile' da Firestore
-                    const cellMotivazione = row.insertCell();
-                    cellMotivazione.textContent = v.motivazione_variabile; // Usa 'motivazione_variabile' da Firestore
+                    const newRow = variablesTableBody.insertRow(); // Corrected: create newRow
+                    newRow.className = 'text-slate-700';
+
+                    const cellNome = newRow.insertCell(); // Use newRow
+                    const translationKey = `variable_${v.nome_variabile.replace(/\s/g, '')}`;
+                    cellNome.textContent = translations[currentLanguage][translationKey] || v.nome_variabile;
+
+                    const cellPunteggio = newRow.insertCell(); // Use newRow
+                    cellPunteggio.textContent = v.punteggio_variabile;
+
+                    const cellMotivazione = newRow.insertCell(); // Use newRow
+                    cellMotivazione.textContent = v.motivazione_variabile[currentLanguage] || v.motivazione_variabile.it || translations[currentLanguage].no_motivation_available;
                 });
             } else {
                 variablesChartCanvas.style.display = 'none';
@@ -698,157 +1010,171 @@
                 if (variablesChart) variablesChart.destroy();
             }
 
-            // Update Coherence Details with Dropdown (usa coerenza_coppie)
+            // Update Coherence Details with Dropdown (use coherence_pairs)
+            // Update Coherence Details with Dropdown (use coherence_pairs)
             if (documentData.coherence_pairs && documentData.coherence_pairs.length > 0) {
-                coherencePairSelector.innerHTML = '<option value="">Seleziona una coppia</option>'; // Clear existing options
-                documentData.coherence_pairs.forEach((cp, index) => {
-                    const option = document.createElement('option');
-                    option.value = index; // Store index to easily retrieve data
-                    option.textContent = cp.nome_coppia; // Usa 'nome_coppia' da Firestore
-                    coherencePairSelector.appendChild(option);
-                });
-                coherencePairSelector.disabled = false;
-                noCoherenceDataDiv.classList.add('hidden');
-
-                // Select the first item by default and display its details
-                if (documentData.coherence_pairs.length > 0) {
-                    coherencePairSelector.value = 0; // Select the first option
-                    const firstPair = documentData.coherence_pairs[0];
-                    selectedCoherenceScore.textContent = firstPair.punteggio_coppia; // Usa 'punteggio_coppia' da Firestore
-                    selectedCoherenceMotivation.textContent = firstPair.motivazione_coppia; // Usa 'motivazione_coppia' da Firestore
-                }
-
-                // Add event listener for the dropdown
-                coherencePairSelector.onchange = (event) => {
-                    const selectedIndex = event.target.value;
-                    if (selectedIndex !== "") {
+                // Funzione ausiliaria per aggiornare i dettagli della coppia selezionata
+                const updateSelectedCoherenceDetails = (selectedIndex) => {
+                    // Controllo aggiunto per assicurarsi che selectedIndex sia un numero valido
+                    if (typeof selectedIndex === 'string' && selectedIndex === "") { // Se l'opzione "Seleziona Coppia" è selezionata
+                        selectedCoherenceScore.textContent = '--';
+                        selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
+                    } else if (typeof selectedIndex === 'number' && documentData.coherence_pairs[selectedIndex] !== undefined) {
                         const selectedPair = documentData.coherence_pairs[selectedIndex];
                         selectedCoherenceScore.textContent = selectedPair.punteggio_coppia;
-                        selectedCoherenceMotivation.textContent = selectedPair.motivazione_coppia;
-                    } else {
+                        selectedCoherenceMotivation.textContent = selectedPair.motivazione_coppia[currentLanguage] || selectedPair.motivazione_coppia.it || translations[currentLanguage].no_motivation_available;
+                    } else { // Fallback per qualsiasi altro caso inatteso
                         selectedCoherenceScore.textContent = '--';
-                        selectedCoherenceMotivation.textContent = 'Nessuna motivazione disponibile.';
+                        selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
                     }
                 };
 
-            } else {
-                coherencePairSelector.innerHTML = '<option value="">Nessun dato di coerenza disponibile</option>';
+                coherenceDoughnutChartCanvas.style.display = 'block'; // Mostra il doughnut chart container
+                noCoherenceDataDiv.classList.add('hidden'); // Nasconde "no data" per coerenza
+
+                coherencePairSelector.innerHTML = '<option value="">' + translations[currentLanguage].select_pair_label + '</option>';
+                documentData.coherence_pairs.forEach((cp, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    const [var1, var2] = cp.nome_coppia.split(' - '); // `nome_coppia` è la chiave corretta da Firestore
+                    const translatedVar1 = translations[currentLanguage][`variable_${var1.replace(/\s/g, '')}`] || var1;
+                    const translatedVar2 = translations[currentLanguage][`variable_${var2.replace(/\s/g, '')}`] || var2;
+                    option.textContent = `${translatedVar1} - ${translatedVar2}`;
+                    coherencePairSelector.appendChild(option);
+                });
+                coherencePairSelector.disabled = false;
+
+                // Imposta il valore di default e aggiorna i dettagli subito (se ci sono coppie)
+                if (documentData.coherence_pairs.length > 0) {
+                    coherencePairSelector.value = 0; // Seleziona il primo elemento (indice 0)
+                    updateSelectedCoherenceDetails(0); // Chiama la funzione per popolare i dettagli della prima coppia
+                } else {
+                    // Se l'array di coppie è vuoto, assicurati che il selettore sia pulito
+                    coherencePairSelector.innerHTML = '<option value="">' + translations[currentLanguage].no_coherence_data + '</option>';
+                    coherencePairSelector.disabled = true;
+                    updateSelectedCoherenceDetails(""); // Mostra lo stato di "nessun dato"
+                }
+
+
+                // Add event listener for the dropdown
+                coherencePairSelector.onchange = (event) => {
+                    // Il valore del dropdown è una stringa, convertila in numero se non è l'opzione vuota
+                    const selectedValue = event.target.value;
+                    const selectedIndex = selectedValue !== "" ? parseInt(selectedValue) : selectedValue;
+                    updateSelectedCoherenceDetails(selectedIndex); // Chiama la funzione al cambio
+                };
+
+
+            } else { // Se non ci sono dati di coerenza
+                coherenceDoughnutChartCanvas.style.display = 'none'; // Nasconde il doughnut chart container
+                coherencePairSelector.innerHTML = '<option value="">' + translations[currentLanguage].no_coherence_data + '</option>';
                 coherencePairSelector.disabled = true;
                 selectedCoherenceScore.textContent = '--';
-                selectedCoherenceMotivation.textContent = 'Nessuna motivazione disponibile.';
-                noCoherenceDataDiv.classList.remove('hidden');
+                selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
+                noCoherenceDataDiv.classList.remove('hidden'); // Mostra "no data" per coerenza
+                if (coherenceDoughnutChart) { coherenceDoughnutChart.destroy(); coherenceDoughnutChart = null; } // Distruggi il grafico se non ci sono dati
             }
         }
 
-        // Funzione per recuperare tutti i dati della dashboard (Home e Deal Flow) da Cloud Function API
+        // Function to retrieve all dashboard data (Home and Deal Flow) from Cloud Function API
         async function fetchDataInBothDashboards(user) {
             if (!user) {
-                console.log("Utente non autenticato. Impossibile recuperare i dati.");
+                console.log("User not authenticated. Cannot retrieve data.");
                 loadingOverlay.classList.add('hidden');
                 clearMainDashboard();
                 return;
             }
 
-            loadingOverlay.classList.remove('hidden'); // Mostra overlay di caricamento
+            loadingOverlay.classList.remove('hidden'); // Show loading overlay
 
             try {
                 const token = await user.getIdToken();
-                // Questo è l'URL della tua Cloud Function API che aggrega i dati da BigQuery
-                // Aggiornato per puntare alla tua funzione 'fetchPitchData'
-                const apiUrl = `https://europe-west1-validatr-mvp.cloudfunctions.net/fetchPitchData`; 
-                
+                const apiUrl = `https://europe-west1-validatr-mvp.cloudfunctions.net/fetchPitchData`;
+
                 const response = await fetch(apiUrl, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
-                }); 
-                
+                });
+
                 if (!response.ok) {
                     if (response.status === 401 || response.status === 403) {
-                        console.error("Accesso API negato. Potresti non avere i permessi o il token è scaduto.");
-                        await signOut(auth); // Forza il logout
+                        console.error("API access denied. You might not have permissions or the token expired.");
+                        await signOut(auth); // Force logout
                         return;
                     }
-                    throw new Error(`Errore HTTP! Stato: ${response.status}`);
+                    throw new Error(`HTTP Error! Status: ${response.status}`);
                 }
                 const data = await response.json();
 
-                loadedAllData = data; // Popola loadedAllData con tutti i dati
+                loadedAllData = data;
 
-                // Popola il selettore documenti per la Home Dashboard
+                // Populate document selector for Home Dashboard
                 documentSelector.innerHTML = '';
                 if (Object.keys(loadedAllData).length === 0) {
-                     const option = document.createElement('option');
-                     option.value = '';
-                     option.textContent = 'Nessun Pitch Deck disponibile';
-                     documentSelector.appendChild(option);
-                     documentSelector.disabled = true;
-                     clearMainDashboard(); // Assicurati che la dashboard Home sia vuota
+                       const option = document.createElement('option');
+                       option.value = '';
+                       option.textContent = translations[currentLanguage].no_pitch_deck_available;
+                       documentSelector.appendChild(option);
+                       documentSelector.disabled = true;
+                       clearMainDashboard();
                 } else {
                     documentSelector.disabled = false;
                     const sortedDocIds = Object.keys(loadedAllData).sort((a, b) => a.localeCompare(b));
                     sortedDocIds.forEach(docId => {
                         const option = document.createElement('option');
                         option.value = docId;
-                        // Utilizza document_name se presente, altrimenti l'ID
-                        option.textContent = loadedAllData[docId].document_name || docId; 
+                        option.textContent = loadedAllData[docId].document_name || docId;
                         documentSelector.appendChild(option);
                     });
-                     if (sortedDocIds.length > 0) {
-                        documentSelector.value = sortedDocIds[0];
-                        updateMainDashboard(sortedDocIds[0]); // Mostra il primo documento al caricamento
-                     }
+                       if (sortedDocIds.length > 0) {
+                           documentSelector.value = sortedDocIds[0];
+                           updateMainDashboard(sortedDocIds[0]);
+                       }
                 }
 
             } catch (error) {
-                console.error("Errore durante il recupero dei dati da Cloud Function API:", error);
-                // Puoi mostrare un messaggio di errore sulla dashboard qui
+                console.error("Error retrieving data from Cloud Function API:", error);
                 clearMainDashboard();
             } finally {
-                loadingOverlay.classList.add('hidden'); // Nasconde overlay di caricamento
+                loadingOverlay.classList.add('hidden'); // Hide loading overlay
             }
         }
 
 
-        // Funzione per renderizzare la dashboard di ranking (usa i dati già caricati)
-        async function fetchAndRenderRanking(filterType = 'my') { // filterType sarà sempre 'my'
+        // Function to render the ranking dashboard (uses already loaded data)
+        async function fetchAndRenderRanking(filterType = 'my') {
             const user = auth.currentUser;
             if (!user) {
-                console.log("Utente non autenticato. Impossibile recuperare i dati per il ranking.");
+                console.log("User not authenticated. Cannot retrieve ranking data.");
                 loadingOverlay.classList.add('hidden');
                 noRankingDataDiv.classList.remove('hidden');
-                noRankingDataDiv.textContent = 'Accedi per visualizzare la dashboard.';
+                noRankingDataDiv.textContent = translations[currentLanguage].login_to_view_dashboard;
                 if (rankingChart) rankingChart.destroy();
                 return;
             }
 
-            // Assicurati che loadedAllData sia popolato prima di filtrare
             if (Object.keys(loadedAllData).length === 0) {
-                await fetchDataInBothDashboards(user); // Carica i dati se non sono già stati caricati
+                await fetchDataInBothDashboards(user);
             }
-            
+
             const rankingData = [];
             for (const docId in loadedAllData) {
                 const doc = loadedAllData[docId];
-                // Ora il filtro è implicito: recuperiamo solo i pitch dell'utente autenticato dal backend.
-                // Non è più necessario filtrare qui con `doc.calcoli_aggiuntivi.userId !== user.uid`
-                // perché la funzione Cloud Function fetchPitchData già lo fa.
-
                 if (doc.core_metrics && doc.core_metrics.final_adjusted_score !== undefined) {
                     rankingData.push({
-                        name: doc.document_name || docId, // Usa document_name o docId
+                        name: doc.document_name || docId,
                         score: doc.core_metrics.final_adjusted_score
                     });
                 }
             }
 
-            // Ordina in ordine decrescente per score (i "vincitori" in alto)
             rankingData.sort((a, b) => b.score - a.score);
 
             if (rankingData.length === 0) {
                 rankingChartCanvas.style.display = 'none';
                 noRankingDataDiv.classList.remove('hidden');
-                noRankingDataDiv.textContent = `Nessun dato di ranking disponibile per i tuoi pitch.`; // Messaggio specifico
+                noRankingDataDiv.textContent = `${translations[currentLanguage].no_ranking_data} per ${translations[currentLanguage][filterType + '_pitches']}.`;
                 if (rankingChart) rankingChart.destroy();
                 return;
             } else {
@@ -859,44 +1185,46 @@
             const labels = rankingData.map(item => item.name);
             const scores = rankingData.map(item => item.score);
 
-            // Definisci i colori delle barre in base alla posizione nel ranking
             const backgroundColors = [];
             const borderColors = [];
             const numItems = rankingData.length;
 
             for (let i = 0; i < numItems; i++) {
-                if (i === 0) { // Primo classificato (verde più brillante)
-                    backgroundColors.push('#34D399'); // Emerald-400
-                    borderColors.push('#059669'); // Emerald-600
-                } else if (i === 1) { // Secondo classificato (verde medio)
-                    backgroundColors.push('#10B981'); // Emerald-500
-                    borderColors.push('#047857'); // Emerald-700
-                } else if (i === 2) { // Terzo classificato (verde più scuro)
-                    backgroundColors.push('#059669'); // Emerald-600
-                    borderColors.push('#065F46'); // Emerald-800
-                } else if (i >= numItems - 3 && numItems > 3) { // Ultimi 3 (se ci sono più di 3 elementi in totale)
-                    if (i === numItems - 1) { // Ultimo classificato (rosso scuro)
-                        backgroundColors.push('#B91C1C'); // Red-800
-                        borderColors.push('#7F1D1D'); // Red-900
-                    } else if (i === numItems - 2) { // Penultimo (rosso medio)
-                        backgroundColors.push('#EF4444'); // Red-500
-                        borderColors.push('#DC2626'); // Red-600
-                    } else { // Terzultimo (rosso chiaro)
-                        backgroundColors.push('#F87171'); // Red-400
-                        borderColors.push('#EF4444'); // Red-500
+                const currentClass = loadedAllData[rankingData[i].name]?.core_metrics?.classe_pitch;
+                if (currentClass === 'INVESTIRE') {
+                    backgroundColors.push('#10b981');
+                    borderColors.push('#059669');
+                } else if (currentClass === 'MONITORARE') {
+                    backgroundColors.push('#f59e0b');
+                    borderColors.push('#d97706');
+                } else if (currentClass === 'VERIFICARE') {
+                    backgroundColors.push('#f97316');
+                    borderColors.push('#ea580c');
+                } else if (currentClass === 'PASS') {
+                    backgroundColors.push('#ef4444');
+                    borderColors.push('#dc2626');
+                } else {
+                    if (i === 0) { backgroundColors.push('#34D399'); borderColors.push('#059669'); }
+                    else if (i === 1) { backgroundColors.push('#10B981'); borderColors.push('#047857'); }
+                    else if (i === 2) { backgroundColors.push('#059669'); borderColors.push('#065F46'); }
+                    else if (i >= numItems - 3 && numItems > 3) {
+                        if (i === numItems - 1) { backgroundColors.push('#B91C1C'); borderColors.push('#7F1D1D'); }
+                        else if (i === numItems - 2) { backgroundColors.push('#EF4444'); borderColors.push('#DC2626'); }
+                        else { backgroundColors.push('#F87171'); borderColors.push('#EF4444'); }
+                    } else {
+                        backgroundColors.push('#FBBF24'); borderColors.push('#F59E0B');
                     }
-                } else { // Tutti gli altri (giallo)
-                    backgroundColors.push('#FBBF24'); // Amber-400
-                    borderColors.push('#F59E0B'); // Amber-500
                 }
             }
 
-            // Aggiorna o crea il Grafico a Barre Orizzontali
+
             if (rankingChart) {
                 rankingChart.data.labels = labels;
                 rankingChart.data.datasets[0].data = scores;
                 rankingChart.data.datasets[0].backgroundColor = backgroundColors;
                 rankingChart.data.datasets[0].borderColor = borderColors;
+                rankingChart.options.scales.x.title.text = translations[currentLanguage].score_finale_regolato_label + ' (0-100)';
+                rankingChart.options.scales.y.title.text = translations[currentLanguage].chart_pitch_deck_label;
                 rankingChart.update();
             } else {
                 const ctx = rankingChartCanvas.getContext('2d');
@@ -905,20 +1233,20 @@
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Score Finale Regolato',
+                            label: translations[currentLanguage].score_finale_regolato_label,
                             data: scores,
-                            backgroundColor: backgroundColors, 
-                            borderColor: borderColors, 
+                            backgroundColor: backgroundColors,
+                            borderColor: borderColors,
                             borderWidth: 1
                         }]
                     },
                     options: {
-                        indexAxis: 'y', // Grafico a barre orizzontali
+                        indexAxis: 'y',
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                display: false // Non mostrare la legenda
+                                display: false
                             },
                             tooltip: {
                                 callbacks: {
@@ -926,15 +1254,15 @@
                                         return `${context.label}: ${context.parsed.x.toFixed(2)}`;
                                     }
                                 }
-                            },
+                            }
                         },
                         scales: {
                             x: {
                                 beginAtZero: true,
-                                max: 100, // Il punteggio massimo è 100
+                                max: 100,
                                 title: {
                                     display: true,
-                                    text: 'Score Finale Regolato (0-100)',
+                                    text: translations[currentLanguage].score_finale_regolato_label + ' (0-100)',
                                     color: '#475569'
                                 },
                                 ticks: {
@@ -947,7 +1275,7 @@
                             y: {
                                 title: {
                                     display: true,
-                                    text: 'Pitch Deck',
+                                    text: translations[currentLanguage].chart_pitch_deck_label,
                                     color: '#475569'
                                     },
                                     ticks: {
@@ -966,32 +1294,41 @@
 
         // Event Listeners
         document.addEventListener('DOMContentLoaded', () => {
-            // Gestione Autenticazione Firebase
+            // Load language when DOM is ready
+            loadLanguage();
+
+            // Language selector change listener
+            document.getElementById('languageSelector').addEventListener('change', (event) => {
+                setLanguage(event.target.value);
+            });
+
+            // Authentication Management
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     console.log("Utente loggato:", user.email);
-                    userEmailSpan.textContent = user.email;
+                    userEmailSpan.textContent = user.email; // Email text content is NOT translated
+                    profileCircle.textContent = user.email ? user.email.charAt(0).toUpperCase() : 'U';
                     authStatus.classList.remove('hidden');
                     loginSection.classList.add('hidden');
                     dashboardContent.classList.remove('hidden');
                     loginError.classList.add('hidden');
 
-                    // Al login, recupera tutti i dati dalla Cloud Function API
+                    // On login, retrieve all data from Cloud Function API
                     await fetchDataInBothDashboards(user);
-                    
-                    // Mostra la dashboard Home per default al login
-                    showSection('home'); 
+
+                    showDashboardSection('home');
 
                 } else {
                     console.log("Utente disconnesso.");
                     authStatus.classList.add('hidden');
                     loginSection.classList.remove('hidden');
                     dashboardContent.classList.add('hidden');
-                    // Distruggi i grafici se l'utente si disconnette
+                    showAuthSection('login');
                     if (variablesChart) { variablesChart.destroy(); variablesChart = null; }
                     if (rankingChart) { rankingChart.destroy(); rankingChart = null; }
-                    clearMainDashboard(); // Pulisci la dashboard Home
-                    loadedAllData = {}; // Svuota i dati caricati
+                    if (coherenceDoughnutChart) { coherenceDoughnutChart.destroy(); coherenceDoughnutChart = null; }
+                    clearMainDashboard();
+                    loadedAllData = {};
                 }
             });
 
@@ -1001,7 +1338,7 @@
                 loginError.classList.add('hidden');
 
                 if (!email || !password) {
-                    loginError.textContent = 'Inserisci email e password.';
+                    loginError.textContent = translations[currentLanguage].login_missing_credentials;
                     loginError.classList.remove('hidden');
                     return;
                 }
@@ -1009,15 +1346,15 @@
                 try {
                     await signInWithEmailAndPassword(auth, email, password);
                 } catch (error) {
-                    console.error("Errore di accesso:", error);
-                    let errorMessage = 'Errore di accesso. Riprova.';
+                    console.error("Login error:", error);
+                    let errorMessage = translations[currentLanguage].login_generic_error;
                     switch (error.code) {
-                        case 'auth/invalid-email': errorMessage = 'Email non valida.'; break;
-                        case 'auth/user-disabled': errorMessage = 'Questo utente è stato disabilitato.'; break;
+                        case 'auth/invalid-email': errorMessage = translations[currentLanguage].login_invalid_email; break;
+                        case 'auth/user-disabled': errorMessage = translations[currentLanguage].login_user_disabled; break;
                         case 'auth/user-not-found':
-                        case 'auth/wrong-password': errorMessage = 'Credenziali non valide.'; break;
-                        case 'auth/too-many-requests': errorMessage = 'Troppi tentativi falliti. Riprova più tardi.'; break;
-                        default: errorMessage = `Errore: ${error.message}`; break;
+                        case 'auth/wrong-password': errorMessage = translations[currentLanguage].login_invalid_credentials; break;
+                        case 'auth/too-many-requests': errorMessage = translations[currentLanguage].login_too_many_requests; break;
+                        default: errorMessage = `${translations[currentLanguage].error_prefix}: ${error.message}`; break;
                     }
                     loginError.textContent = errorMessage;
                     loginError.classList.remove('hidden');
@@ -1028,36 +1365,154 @@
                 try {
                     await signOut(auth);
                 } catch (error) {
-                    console.error("Errore durante il logout:", error);
+                    console.error("Logout error:", error);
+                    alert(`${translations[currentLanguage].logout_error_prefix}: ${error.message}`);
                 }
             });
 
-            // Gestione Navigazione
             navHome.addEventListener('click', (event) => {
                 event.preventDefault();
-                showSection('home');
+                showDashboardSection('home');
             });
 
             navDealFlow.addEventListener('click', (event) => {
                 event.preventDefault();
-                showSection('dealFlow');
+                showDashboardSection('dealFlow');
             });
 
-            // Listener per il cambio dei radio button nel Deal Flow (ora solo "my" è presente)
-            // Non è più necessario un listener che legga il valore,
-            // ma lo manteniamo se in futuro si volesse aggiungere altra logica.
             pitchFilterRadios.forEach(radio => {
                 radio.addEventListener('change', (event) => {
                     if (auth.currentUser) {
-                        fetchAndRenderRanking('my'); // Chiama sempre con 'my'
+                        fetchAndRenderRanking(event.target.value);
                     }
                 });
             });
 
-            // Listener per il cambio del documento nel Document Selector (Home Dashboard)
             documentSelector.addEventListener('change', (event) => {
                 if (auth.currentUser) {
                     updateMainDashboard(event.target.value);
+                }
+            });
+
+            // Registration related event listeners
+            showRegisterFormLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                showAuthSection('register');
+            });
+
+            showLoginFormLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                showAuthSection('login');
+            });
+
+            registerButton.addEventListener('click', async () => {
+                const email = registerEmailInput.value;
+                const password = registerPasswordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
+                registerError.classList.add('hidden');
+
+                if (!email || !password || !confirmPassword) {
+                    registerError.textContent = translations[currentLanguage].register_missing_fields;
+                    registerError.classList.remove('hidden');
+                    return;
+                }
+
+                if (password.length < 6) {
+                    registerError.textContent = translations[currentLanguage].register_password_too_short;
+                    registerError.classList.remove('hidden');
+                    return;
+                }
+
+                if (password !== confirmPassword) {
+                    registerError.textContent = translations[currentLanguage].register_passwords_not_match;
+                    registerError.classList.remove('hidden');
+                    return;
+                }
+
+                try {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
+                    console.log("User registered and logged in:", user.email);
+
+                    await setDoc(doc(db, "artifacts", APP_ID, "users", user.uid, "profile", "data"), {
+                        email: user.email,
+                        registeredAt: new Date(),
+                    });
+                    console.log(`User profile saved to Firestore for UID: ${user.uid}`);
+
+                } catch (error) {
+                    console.error("Registration error:", error);
+                    let errorMessage = translations[currentLanguage].register_generic_error;
+                    switch (error.code) {
+                        case 'auth/email-already-in-use': errorMessage = translations[currentLanguage].register_email_in_use; break;
+                        case 'auth/invalid-email': errorMessage = translations[currentLanguage].register_invalid_email; break;
+                        case 'auth/weak-password': errorMessage = translations[currentLanguage].register_weak_password; break;
+                        default: errorMessage = `${translations[currentLanguage].error_prefix}: ${error.message}`; break;
+                    }
+                    registerError.textContent = errorMessage;
+                    registerError.classList.remove('hidden');
+                }
+            });
+
+            // Upload Pitch button functionality (opens modal)
+            uploadPitchButton.addEventListener('click', () => {
+                if (auth.currentUser) {
+                    uploadModal.classList.remove('hidden');
+                    fileInput.value = ''; // Reset file input
+                    uploadStatusMessage.textContent = ''; // Clear status message
+                } else {
+                    alert(translations[currentLanguage].upload_must_be_logged_in);
+                    showAuthSection('login');
+                }
+            });
+
+            // Close upload modal button
+            closeUploadModalBtn.addEventListener('click', () => {
+                uploadModal.classList.add('hidden');
+            });
+
+            // Handle PDF file upload
+            uploadFileBtn.addEventListener('click', async () => {
+                const file = fileInput.files[0];
+                if (!file) {
+                    uploadStatusMessage.textContent = translations[currentLanguage].upload_select_file;
+                    uploadStatusMessage.style.color = '#ef4444';
+                    return;
+                }
+                if (file.type !== 'application/pdf') {
+                    uploadStatusMessage.textContent = translations[currentLanguage].upload_must_be_pdf;
+                    uploadStatusMessage.style.color = '#ef4444';
+                    return;
+                }
+
+                const user = auth.currentUser;
+                if (!user) {
+                    uploadStatusMessage.textContent = translations[currentLanguage].upload_must_be_logged_in;
+                    uploadStatusMessage.style.color = '#ef4444';
+                    return;
+                }
+
+                uploadStatusMessage.textContent = translations[currentLanguage].upload_in_progress;
+                uploadStatusMessage.style.color = '#475569';
+
+                try {
+                    const filePath = `user_uploads/${user.uid}/${file.name}`;
+                    const fileRef = ref(storage, `${PITCH_INPUT_BUCKET}/${filePath}`);
+
+                    await uploadBytes(fileRef, file);
+                    uploadStatusMessage.textContent = translations[currentLanguage].upload_completed;
+                    uploadStatusMessage.style.color = '#10b981';
+                    console.log('File uploaded successfully. Path:', filePath);
+
+                    setTimeout(() => {
+                        uploadModal.classList.add('hidden');
+                        fetchDataInBothDashboards(user);
+                    }, 2000);
+
+                } catch (error) {
+                    console.error("Error during file upload:", error);
+                    uploadStatusMessage.textContent = `${translations[currentLanguage].upload_error}: ${error.message}`;
+                    uploadStatusMessage.style.color = '#ef4444';
                 }
             });
         });
