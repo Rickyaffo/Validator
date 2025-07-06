@@ -1011,32 +1011,16 @@
             }
 
             // Update Coherence Details with Dropdown (use coherence_pairs)
-            // Update Coherence Details with Dropdown (use coherence_pairs)
             if (documentData.coherence_pairs && documentData.coherence_pairs.length > 0) {
-                // Funzione ausiliaria per aggiornare i dettagli della coppia selezionata
-                const updateSelectedCoherenceDetails = (selectedIndex) => {
-                    // Controllo aggiunto per assicurarsi che selectedIndex sia un numero valido
-                    if (typeof selectedIndex === 'string' && selectedIndex === "") { // Se l'opzione "Seleziona Coppia" è selezionata
-                        selectedCoherenceScore.textContent = '--';
-                        selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
-                    } else if (typeof selectedIndex === 'number' && documentData.coherence_pairs[selectedIndex] !== undefined) {
-                        const selectedPair = documentData.coherence_pairs[selectedIndex];
-                        selectedCoherenceScore.textContent = selectedPair.punteggio_coppia;
-                        selectedCoherenceMotivation.textContent = selectedPair.motivazione_coppia[currentLanguage] || selectedPair.motivazione_coppia.it || translations[currentLanguage].no_motivation_available;
-                    } else { // Fallback per qualsiasi altro caso inatteso
-                        selectedCoherenceScore.textContent = '--';
-                        selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
-                    }
-                };
+                noCoherenceDataDiv.classList.add('hidden'); // Nasconde il messaggio "nessun dato"
+                coherenceDoughnutChartCanvas.style.display = 'block'; // Mostra l'area del grafico
 
-                coherenceDoughnutChartCanvas.style.display = 'block'; // Mostra il doughnut chart container
-                noCoherenceDataDiv.classList.add('hidden'); // Nasconde "no data" per coerenza
-
+                // --- POPOLA IL MENU A TENDINA ---
                 coherencePairSelector.innerHTML = '<option value="">' + translations[currentLanguage].select_pair_label + '</option>';
                 documentData.coherence_pairs.forEach((cp, index) => {
                     const option = document.createElement('option');
                     option.value = index;
-                    const [var1, var2] = cp.nome_coppia.split(' - '); // `nome_coppia` è la chiave corretta da Firestore
+                    const [var1, var2] = cp.nome_coppia.split(' - ');
                     const translatedVar1 = translations[currentLanguage][`variable_${var1.replace(/\s/g, '')}`] || var1;
                     const translatedVar2 = translations[currentLanguage][`variable_${var2.replace(/\s/g, '')}`] || var2;
                     option.textContent = `${translatedVar1} - ${translatedVar2}`;
@@ -1044,35 +1028,80 @@
                 });
                 coherencePairSelector.disabled = false;
 
-                // Imposta il valore di default e aggiorna i dettagli subito (se ci sono coppie)
-                if (documentData.coherence_pairs.length > 0) {
-                    coherencePairSelector.value = 0; // Seleziona il primo elemento (indice 0)
-                    updateSelectedCoherenceDetails(0); // Chiama la funzione per popolare i dettagli della prima coppia
-                } else {
-                    // Se l'array di coppie è vuoto, assicurati che il selettore sia pulito
-                    coherencePairSelector.innerHTML = '<option value="">' + translations[currentLanguage].no_coherence_data + '</option>';
-                    coherencePairSelector.disabled = true;
-                    updateSelectedCoherenceDetails(""); // Mostra lo stato di "nessun dato"
-                }
-
-
-                // Add event listener for the dropdown
-                coherencePairSelector.onchange = (event) => {
-                    // Il valore del dropdown è una stringa, convertila in numero se non è l'opzione vuota
-                    const selectedValue = event.target.value;
-                    const selectedIndex = selectedValue !== "" ? parseInt(selectedValue) : selectedValue;
-                    updateSelectedCoherenceDetails(selectedIndex); // Chiama la funzione al cambio
+                // --- FUNZIONE PER AGGIORNARE I DETTAGLI (PUNTEGGIO E MOTIVAZIONE) ---
+                const updateSelectedCoherenceDetails = (selectedIndex) => {
+                    if (selectedIndex === "" || documentData.coherence_pairs[selectedIndex] === undefined) {
+                        selectedCoherenceScore.textContent = '--';
+                        selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
+                        return;
+                    }
+                    const selectedPair = documentData.coherence_pairs[selectedIndex];
+                    selectedCoherenceScore.textContent = selectedPair.punteggio_coppia;
+                    // NOTA: 'motivazione_coppia' è vuoto nel tuo JSON. Quando lo sistemerai nella Cloud Function, questo codice funzionerà.
+                    selectedCoherenceMotivation.textContent = selectedPair.motivazione_coppia[currentLanguage] || selectedPair.motivazione_coppia.it || translations[currentLanguage].no_motivation_available;
                 };
 
+                // Imposta il valore di default (la prima coppia) e aggiorna i dettagli
+                coherencePairSelector.value = 0;
+                updateSelectedCoherenceDetails(0);
+
+                // Aggiunge l'evento per aggiornare i dettagli quando cambi la selezione
+                coherencePairSelector.onchange = (event) => {
+                    const selectedIndex = event.target.value !== "" ? parseInt(event.target.value) : "";
+                    updateSelectedCoherenceDetails(selectedIndex);
+                };
+
+                // --- CREAZIONE DEL GRAFICO A CIAMBELLA (DOUGHNUT CHART) - PARTE MANCANTE ---
+                const highCoherenceCount = documentData.coherence_pairs.filter(p => p.punteggio_coppia >= 75).length;
+                const lowCoherenceCount = documentData.coherence_pairs.length - highCoherenceCount;
+
+                if (coherenceDoughnutChart) {
+                    coherenceDoughnutChart.destroy(); // Distrugge il grafico precedente per evitare duplicati
+                }
+                
+                const doughnutCtx = coherenceDoughnutChartCanvas.getContext('2d');
+                coherenceDoughnutChart = new Chart(doughnutCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [
+                            translations[currentLanguage].high_coherence, // Es: 'Alta Coerenza'
+                            translations[currentLanguage].low_coherence   // Es: 'Bassa Coerenza'
+                        ],
+                        datasets: [{
+                            data: [highCoherenceCount, lowCoherenceCount],
+                            backgroundColor: ['#10b981', '#f59e0b'], // Colori per le sezioni
+                            borderColor: ['#ffffff', '#ffffff'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { color: '#475569' }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Distribuzione Coerenza',
+                                color: '#475569'
+                            }
+                        }
+                    }
+                });
 
             } else { // Se non ci sono dati di coerenza
-                coherenceDoughnutChartCanvas.style.display = 'none'; // Nasconde il doughnut chart container
+                coherenceDoughnutChartCanvas.style.display = 'none';
                 coherencePairSelector.innerHTML = '<option value="">' + translations[currentLanguage].no_coherence_data + '</option>';
                 coherencePairSelector.disabled = true;
                 selectedCoherenceScore.textContent = '--';
                 selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
-                noCoherenceDataDiv.classList.remove('hidden'); // Mostra "no data" per coerenza
-                if (coherenceDoughnutChart) { coherenceDoughnutChart.destroy(); coherenceDoughnutChart = null; } // Distruggi il grafico se non ci sono dati
+                noCoherenceDataDiv.classList.remove('hidden');
+                if (coherenceDoughnutChart) {
+                    coherenceDoughnutChart.destroy();
+                    coherenceDoughnutChart = null;
+                }
             }
         }
 
