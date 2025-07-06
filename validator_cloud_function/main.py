@@ -463,7 +463,8 @@ def process_pitch_deck(cloud_event):
     # IMPORANTE: MODIFICA CON L'EMAIL DEL TUO ADMIN FIREBASE
     # Questa email verr\u00E0 usata per associare i caricamenti manuali a un utente admin specifico.
     # In un ambiente di produzione, considera di usare Google Secret Manager per questo valore.
-    ADMIN_EMAIL_FOR_MANUAL_UPLOADS = "admin@validatr.com" # <--- MODIFICA QUI
+    ADMIN_EMAIL_FOR_MANUAL_UPLOADS = "admin@validatr.com" 
+    final_analysis = None 
 
     try:
         event_data = None
@@ -472,7 +473,7 @@ def process_pitch_deck(cloud_event):
         elif hasattr(cloud_event, "data"):
             event_data = cloud_event.data
         else:
-            print("Errore: cloud_event non \u00E8 un dizionario e non ha l'attributo 'data'.")
+            print("Errore: cloud_event non è un dizionario e non ha l'attributo 'data'.")
             return {"status": "error", "message": "CloudEvent is neither a dict nor has a 'data' attribute."}
 
         if event_data is None:
@@ -484,7 +485,7 @@ def process_pitch_deck(cloud_event):
             return {"status": "error", "message": "Missing 'bucket' or 'name' in CloudEvent data."}
 
         bucket_name = event_data["bucket"]
-        file_name = event_data["name"]
+        file_name = event_data["name"] # This is the full path within the bucket, e.g., "folder/subfolder/file.pdf"
         print(f"Triggered by file: gs://{bucket_name}/{file_name}")
 
         storage_client = storage.Client()
@@ -495,61 +496,40 @@ def process_pitch_deck(cloud_event):
             print(f"Skipping non-PDF file: {file_name}. Only PDF files are processed.")
             return {"status": "skipped", "message": "Not a PDF file."}
         
-        base_file_name = os.path.splitext(file_name)[0]
-        output_blob_name = f"{base_file_name}.analysis_result.json"
+        # --- Modifiche per estrarre ID documento pulito e gestire percorso completo ---
+        # Estrai solo il nome del file senza il percorso e l'estensione per l'ID del documento Firestore
+        clean_file_name_for_firestore_id = os.path.splitext(os.path.basename(file_name))[0] # Esempio: "11_Unloca"
 
-        output_bucket_name = "validatr-pitch-decks-output" # Assicurati che questo bucket esista
-        output_bucket = storage_client.bucket(output_bucket_name)
-        output_blob = output_bucket.blob(output_blob_name)
-
-        final_analysis = None # Inizializza final_analysis
-
-        # --- RECUPERO USER_ID PER FIRESTORE ---
+         # --- RECUPERO USER_ID PER FIRESTORE ---
         user_id_for_firestore = None
-        blob_metadata = None # Inizializza per sicurezza
+        
+        input_blob.reload()
+        blob_metadata = input_blob.metadata if input_blob.metadata is not None else {}
+        user_email_from_metadata = blob_metadata.get('user_email') 
 
-        if input_blob.exists():
-            input_blob.reload() # Assicurati di avere i metadati pi\u00F9 recenti
-            blob_metadata = input_blob.metadata if input_blob.metadata is not None else {} # Inizializza a dict vuoto se None
-
-            if blob_metadata: # Verifica se i metadati sono presenti e non None
-                # 1. Tenta di ottenere l'email dell'utente finale dai metadati di Zapier/Typeform
-                user_email_from_metadata = blob_metadata.get('user_email')
-                if user_email_from_metadata:
-                    try:
-                        user_record = auth.get_user_by_email(user_email_from_metadata)
-                        user_id_for_firestore = user_record.uid
-                        print(f"Associando il pitch all'utente Firebase (email): {user_email_from_metadata} (UID: {user_id_for_firestore})")
-                    except auth.UserNotFoundError:
-                        print(f"WARNING: Utente Firebase '{user_email_from_metadata}' (da metadati 'user_email') non trovato. Cerco altre fonti o salvo pubblicamente.")
-                    except Exception as e:
-                        print(f"ERROR: Errore durante il recupero UID per '{user_email_from_metadata}': {e}. Cerco altre fonti o salvo pubblicamente.")
-                else:
-                    print("Metadato 'user_email' non presente nel blob.")
-
-                # 2. Se l'utente finale non \u00E8 stato identificato, controlla se \u00E8 un caricamento manuale dell'admin
-                if not user_id_for_firestore:
-                    upload_source_metadata = blob_metadata.get('upload_source')
-                    if upload_source_metadata == 'manual_admin':
-                        # Se \u00E8 un caricamento manuale dell'admin, salva SEMPRE nel percorso pubblico.
-                        # Non associarlo a un UID specifico in Firestore per questo tipo di upload.
-                        user_id_for_firestore = None 
-                        print(f"Associando il pitch come pubblico a causa di 'manual_admin' source.")
-                        # Potresti voler loggare l'email admin qui per tracciabilit\u00E0 nei log
-                        # try:
-                        #     admin_user_record = auth.get_user_by_email(ADMIN_EMAIL_FOR_MANUAL_UPLOADS)
-                        #     print(f"Caricamento manuale dell'Admin (Email: {ADMIN_EMAIL_FOR_MANUAL_UPLOADS}, UID: {admin_user_record.uid}) salvato pubblicamente.")
-                        # except Exception as e:
-                        #     print(f"Impossibile risolvere UID Admin per logging: {e}")
-                    else:
-                        print("Metadato 'upload_source' non presente o non 'manual_admin'.")
-            else:
-                print("WARNING: Blob esiste ma non ha metadati personalizzati. Il pitch sar\u00E0 salvato pubblicamente.")
+        if user_email_from_metadata:
+            try:
+                user_record = auth.get_user_by_email(user_email_from_metadata)
+                user_id_for_firestore = user_record.uid
+                print(f"Associando il pitch all'utente Firebase (email): {user_email_from_metadata} (UID: {user_id_for_firestore})")
+            except auth.UserNotFoundError:
+                print(f"WARNING: Utente Firebase '{user_email_from_metadata}' (da metadati 'user_email') non trovato. Salvo pubblicamente.")
+            except Exception as e:
+                print(f"ERROR: Errore durante il recupero UID per '{user_email_from_metadata}': {e}. Salvo pubblicamente.")
         else:
-            print("WARNING: Blob non trovato per la lettura dei metadati. Il pitch sar\u00E0 salvato pubblicamente.")
+            print("Metadato 'user_email' non presente nel blob. Salvo pubblicamente.")
+        
+       # Determina la cartella di output basata sull'UID dell'utente
+        if user_id_for_firestore:
+            output_folder = f"user_analyses/{user_id_for_firestore}" # Ad esempio, "user_analyses/{UID}"
+        else:
+            output_folder = "public_analyses" # Cartella per le analisi non associate a un utente specifico (es. admin manuale senza email utente)
+
+        # Fallback per user_id_for_firestore se non identificato da metadati
+        if not user_id_for_firestore:
+            pass # Lascia user_id_for_firestore a None per un salvataggio pubblico se necessario
 
 
-        # Scarica il contenuto del PDF in memoria per la nuova analisi
         pdf_content = io.BytesIO(input_blob.download_as_bytes())
         reader = PyPDF2.PdfReader(pdf_content)
         all_text = ""
@@ -562,95 +542,92 @@ def process_pitch_deck(cloud_event):
         all_text = all_text.replace('\n\n', '\n').strip()
         print(f"Testo estratto dal PDF (primi 500 caratteri): {all_text[:500]}...")
 
-        # --- Chiamata API GPT per l'Analisi REALE ---
         analysis_result = analyze_pitch_deck_with_gpt(all_text) 
         
-        # --- RISULTATO MOCK PER IL TEST SE GPT E' DISABILITATO ---
-        if analysis_result is None:
+        if analysis_result is None: # If actual GPT call fails
             print("Utilizzando risultati di analisi mock per testing. ABILITA LA CHIAMATA GPT PER L'ANALISI REALE.")
-            analysis_result = {
+            analysis_result = { # This mock data is assigned if analysis_result is None
                 "variabili_valutate": [
-                    {"nome": "Problema", "punteggio": 70, "motivazione": "Mock: Il problema \u00E8 ben compreso."},
-                    {"nome": "Target", "punteggio": 65, "motivazione": "Mock: Target definito."},
-                    {"nome": "Soluzione", "punteggio": 75, "motivazione": "Mock: Soluzione chiara."},
-                    {"nome": "Mercato", "punteggio": 60, "motivazione": "Mock: Mercato ampio."},
-                    {"nome": "MVP", "punteggio": 55, "motivazione": "Mock: MVP migliorabile."},
-                    {"nome": "Team", "punteggio": 80, "motivazione": "Mock: Team forte."},
-                    {"nome": "Ritorno Atteso", "punteggio": 40, "motivazione": "Mock: Ritorno poco chiaro."}
+                    {"nome": "Problema", "punteggio": 70, "motivazione": {"it": "Mock: Il problema è ben compreso.", "en": "Mock: The problem is well understood."}},
+                    {"nome": "Target", "punteggio": 65, "motivazione": {"it": "Mock: Target definito.", "en": "Mock: Target defined."}},
+                    {"nome": "Soluzione", "punteggio": 75, "motivazione": {"it": "Mock: Soluzione chiara.", "en": "Mock: Clear solution."}},
+                    {"nome": "Mercato", "punteggio": 60, "motivazione": {"it": "Mock: Mercato ampio.", "en": "Mock: Broad market."}},
+                    {"nome": "MVP", "punteggio": 55, "motivazione": {"it": "Mock: MVP migliorabile.", "en": "Mock: MVP improvable."}},
+                    {"nome": "Team", "punteggio": 80, "motivazione": {"it": "Mock: Strong team.", "en": "Mock: Strong team."}},
+                    {"nome": "Ritorno Atteso", "punteggio": 40, "motivazione": {"it": "Mock: Unclear return.", "en": "Mock: Unclear return."}}
                 ],
                 "coerenza_coppie": [
-                    {"coppia": "Problema - Soluzione", "punteggio": 70, "motivazione": "Mock: Coerenza Problema-Soluzione buona."},
-                    {"coppia": "Target - Mercato", "punteggio": 65, "motivazione": "Mock: Coerenza Target-Mercato media."},
-                    {"coppia": "Soluzione - MVP", "punteggio": 50, "motivazione": "Mock: Coerenza Soluzione-MVP debole."},
-                    {"coppia": "Team - Ritorno Atteso", "punteggio": 45, "motivazione": "Mock: Coerenza Team-Ritorno Atteso bassa."},
-                    {"coppia": "Problema - Target", "punteggio": 70, "motivazione": "Il problema \u00E8 rilevante per il target definito, ma la connessione tra le esigenze specifiche di questo segmento e la soluzione proposta potrebbe essere pi\u00F9 esplicita e approfondita."},
-                    {"coppia": "Problema - Mercato", "punteggio": 80, "motivazione": "Il mercato \u00E8 ampio e in crescita, coerente con il problema e la soluzione, anche se sarebbe utile un collegamento pi\u00F9 diretto tra la dimensione del mercato e la reale domanda del target."},
-                    {"coppia": "Problema - MVP", "punteggio": 50, "motivazione": "L'MVP \u00E8 menzionato ma non dettagliato, quindi la coerenza tra problema e MVP \u00E8 debole. \u00C8 difficile valutare se l'MVP possa effettivamente validare il problema senza ulteriori informazioni."},
-                    {"coppia": "Problema - Team", "punteggio": 65, "motivazione": "Il team ha competenze rilevanti, ma non \u00E8 chiaro se abbia le capacit\u00E0 specifiche per risolvere il problema in modo efficace, specialmente in relazione alle sfide tecniche e di mercato."},
-                    {"coppia": "Problema - Ritorno Atteso", "punteggio": 40, "motivazione": "L'assenza di stime di ritorno rende poco coerente la relazione tra il problema e le aspettative di ritorno economico, creando una disconnessione tra la necessit\u00E0 di risolvere il problema e i benefici attesi."},
-                    {"coppia": "Target - Soluzione", "punteggio": 75, "motivazione": "La soluzione \u00E8 pensata per il target, ma potrebbe essere pi\u00F9 personalizzata o adattata alle esigenze specifiche di questo segmento, migliorando la coerenza."},
-                    {"coppia": "Target - MVP", "punteggio": 55, "motivazione": "L'MVP non \u00E8 descritto in modo dettagliato, quindi la coerenza tra target e MVP \u00E8 limitata. \u00C8 difficile capire se l'MVP sia tarato sulle esigenze specifiche del target."},
-                    {"coppia": "Target - Team", "punteggio": 70, "motivazione": "Il team ha competenze adeguate per il target, ma non sono evidenziate esperienze specifiche nel segmento di mercato o nelle esigenze di questo pubblico."},
-                    {"coppia": "Target - Ritorno Atteso", "punteggio": 45, "motivazione": "L'assenza di stime di ritorno rende poco coerente la relazione tra il target e le aspettative di ritorno economico, creando un gap tra le esigenze del segmento e i benefici attesi."},
-                    {"coppia": "Soluzione - Mercato", "punteggio": 80, "motivazione": "La soluzione si inserisce in un mercato in crescita e con ampio potenziale, coerente con le dimensioni e le tendenze del settore."},
-                    {"coppia": "Soluzione - Team", "punteggio": 70, "motivazione": "Il team ha competenze tecniche e di marketing, coerenti con lo sviluppo e il lancio della soluzione, anche se mancano dettagli sulla capacit\u00E0 di innovare o differenziarsi."},
-                    {"coppia": "Soluzione - Ritorno Atteso", "punteggio": 45, "motivazione": "L'assenza di proiezioni di ritorno rende debole la coerenza tra la soluzione proposta e le aspettative di ritorno economico."},
-                    {"coppia": "Mercato - MVP", "punteggio": 55, "motivazione": "L'MVP non \u00E8 descritto in modo dettagliato, quindi la coerenza tra mercato e MVP \u00E8 limitata. Non si pu\u00F2 valutare se l'MVP possa validare il mercato."},
-                    {"coppia": "Mercato - Team", "punteggio": 75, "motivazione": "Il mercato ampio e in crescita richiede un team con competenze specifiche, che il team sembra possedere, anche se non sono dettagliate le esperienze nel settore."},
-                    {"coppia": "Mercato - Ritorno Atteso", "punteggio": 50, "motivazione": "L'assenza di stime di ritorno rende poco coerente la relazione tra dimensione di mercato e aspettative di ritorno economico."},
-                    {"coppia": "MVP - Team", "punteggio": 50, "motivazione": "L'MVP non \u00E8 dettagliato, quindi la coerenza con il team \u00E8 limitata. Non si pu\u00F2 valutare se il team abbia le competenze per sviluppare e validare l'MVP."},
-                    {"coppia": "MVP - Ritorno Atteso", "punteggio": 40, "motivazione": "L'assenza di stime di ritorno rende debole la coerenza tra MVP e ritorno atteso, creando un gap tra la validazione del prodotto e i benefici economici."},
-                    {"coppia": "Team - Ritorno Atteso", "punteggio": 55, "motivazione": "Il team ha competenze adeguate, ma senza proiezioni di ritorno, la relazione tra capacit\u00E0 esecutiva e benefici economici attesi \u00E8 poco supportata."}
+                    {"coppia": "Problema - Soluzione", "punteggio": 70, "motivazione": {"it": "Mock: Coerenza Problema-Soluzione buona.", "en": "Mock: Problem-Solution coherence is good."}},
+                    {"coppia": "Target - Mercato", "punteggio": 65, "motivazione": {"it": "Mock: Coerenza Target-Mercato media.", "en": "Mock: Target-Market coherence is medium."}},
+                    {"coppia": "Soluzione - MVP", "punteggio": 50, "motivazione": {"it": "Mock: Coerenza Soluzione-MVP debole.", "en": "Mock: Solution-MVP coherence is weak."}},
+                    {"coppia": "Team - Ritorno Atteso", "punteggio": 45, "motivazione": {"it": "Mock: Coerenza Team-Ritorno Atteso bassa.", "en": "Mock: Team-Expected Return coherence is low."}},
+                    {"coppia": "Problema - Target", "punteggio": 70, "motivazione": {"it": "Il problema è rilevante per il target definito, ma la connessione tra le esigenze specifiche di questo segmento e la soluzione proposta potrebbe essere più esplicita e approfondita.", "en": "The problem is relevant to the defined target, but the connection between this segment's specific needs and the proposed solution could be more explicit and in-depth."}},
+                    {"coppia": "Problema - Mercato", "punteggio": 80, "motivazione": {"it": "Il mercato è ampio e in crescita, coerente con il problema e la soluzione, anche se sarebbe utile un collegamento più diretto tra la dimensione del mercato e la reale domanda del target.", "en": "The market is broad and growing, consistent with the problem and solution, although a more direct link between market size and actual target demand would be useful."}},
+                    {"coppia": "Problema - MVP", "punteggio": 50, "motivazione": {"it": "L'MVP è menzionato ma non dettagliato, quindi la coerenza tra problema e MVP è debole. È difficile valutare se l'MVP possa effettivamente validare il problema senza ulteriori informazioni.", "en": "The MVP is mentioned but not detailed, so the coherence between problem and MVP is weak. It's difficult to assess whether the MVP can truly validate the problem without further information."}},
+                    {"coppia": "Problema - Team", "punteggio": 65, "motivazione": {"it": "Il team ha competenze rilevanti, ma non è chiaro se abbia le capacità specifiche per risolvere il problema in modo efficace, specialmente in relazione alle sfide tecniche e di mercato.", "en": "The team has relevant skills, but it's unclear if they have the specific capabilities to effectively solve the problem, especially concerning technical and market challenges."}},
+                    {"coppia": "Problema - Ritorno Atteso", "punteggio": 40, "motivazione": {"it": "L'assenza di stime di ritorno rende poco coerente la relazione tra il problema e le aspettative di ritorno economico, creando una disconnessione tra la necessità di risolvere il problema e i benefici attesi.", "en": "The absence of return estimates makes the relationship between the problem and expected economic returns inconsistent, creating a disconnect between the need to solve the problem and the anticipated benefits."}},
+                    {"coppia": "Target - Soluzione", "punteggio": 75, "motivazione": {"it": "La soluzione è pensata per il target, ma potrebbe essere più personalizzata o adattata alle esigenze specifiche di questo segmento, migliorando la coerenza.", "en": "The solution is designed for the target, but could be more personalized or adapted to the specific needs of this segment, improving coherence."}},
+                    {"coppia": "Target - MVP", "punteggio": 55, "motivazione": {"it": "L'MVP non è descritto in modo dettagliato, quindi la coerenza tra target e MVP è limitata. È difficile capire se l'MVP sia tarato sulle esigenze specifiche del target.", "en": "The MVP is not described in detail, so the coherence between target and MVP is limited. It's difficult to understand if the MVP is tailored to the specific needs of the target."}},
+                    {"coppia": "Target - Team", "punteggio": 70, "motivazione": {"it": "Il team ha competenze adeguate per il target, ma non sono evidenziate esperienze specifiche nel segmento di mercato o nelle esigenze di questo pubblico.", "en": "The team has adequate skills for the target, but specific experience in the market segment or the needs of this audience is not highlighted."}},
+                    {"coppia": "Target - Ritorno Atteso", "punteggio": 45, "motivazione": {"it": "L'assenza di stime di ritorno rende poco coerente la relazione tra il target e le aspettative di ritorno economico, creando un gap tra le esigenze del segmento e i benefici attesi.", "en": "The absence of return estimates makes the relationship between the target and expected economic returns inconsistent, creating a gap between the segment's needs and anticipated benefits."}},
+                    {"coppia": "Soluzione - Mercato", "punteggio": 80, "motivazione": {"it": "La soluzione si inserisce in un mercato in crescita e con ampio potenziale, coerente con le dimensioni e le tendenze del settore.", "en": "The solution fits into a growing market with broad potential, consistent with the industry's size and trends."}},
+                    {"coppia": "Soluzione - Team", "punteggio": 70, "motivazione": {"it": "Il team ha competenze tecniche e di marketing, coerenti con lo sviluppo e il lancio della soluzione, anche se mancano dettagli sulla capacità di innovare o differenziarsi.", "en": "The team has technical and marketing skills consistent with the development and launch of the solution, although details on the ability to innovate or differentiate are lacking."}},
+                    {"coppia": "Soluzione - Ritorno Atteso", "punteggio": 45, "motivazione": {"it": "L'assenza di proiezioni di ritorno rende debole la coerenza tra la soluzione proposta e le aspettative di ritorno economico.", "en": "The absence of return projections weakens the coherence between the proposed solution and expected economic returns."}},
+                    {"coppia": "Mercato - MVP", "punteggio": 55, "motivazione": {"it": "L'MVP non è descritto in modo dettagliato, quindi la coerenza tra mercato e MVP è limitata. Non si può valutare se l'MVP possa validare il mercato.", "en": "The MVP is not described in detail, so the coherence between market and MVP is limited. It's not possible to assess if the MVP can validate the market."}},
+                    {"coppia": "Mercato - Team", "punteggio": 75, "motivazione": {"it": "Il mercato ampio e in crescita richiede un team con competenze specifiche, che il team sembra possedere, anche se non sono dettagliate le esperienze nel settore.", "en": "The large and growing market requires a team with specific skills, which the team seems to possess, although industry experience is not detailed."}},
+                    {"coppia": "Mercato - Ritorno Atteso", "punteggio": 50, "motivazione": {"it": "L'assenza di stime di ritorno rende poco coerente la relazione tra dimensione di mercato e aspettative di ritorno economico.", "en": "The absence of return estimates makes the relationship between market size and expected economic returns inconsistent."}},
+                    {"coppia": "MVP - Team", "punteggio": 50, "motivazione": {"it": "L'MVP non è dettagliato, quindi la coerenza con il team è limitata. Non si può valutare se il team abbia le competenze per sviluppare e validare l'MVP.", "en": "The MVP is not detailed, so coherence with the team is limited. It's not possible to assess if the team has the skills to develop and validate the MVP."}},
+                    {"coppia": "MVP - Ritorno Atteso", "punteggio": 40, "motivazione": {"it": "L'assenza di stime di ritorno rende debole la coerenza tra MVP e ritorno atteso, creando un gap tra la validazione del prodotto e i benefici economici.", "en": "The absence of return estimates weakens the coherence between MVP and expected return, creating a gap between product validation and economic benefits."}},
+                    {"coppia": "Team - Ritorno Atteso", "punteggio": 55, "motivazione": {"it": "Il team ha competenze adeguate, ma senza proiezioni di ritorno, la relazione tra capacità esecutiva e benefici economici attesi è poco supportata.", "en": "The team has adequate skills, but without return projections, the relationship between executive capability and expected economic benefits is poorly supported."}}
                 ]
             }
         # --- FINE RISULTATO MOCK ---
 
+        # Questo blocco ora è garantito che abbia analysis_result definito.
         if analysis_result:
             final_analysis = perform_additional_calculations(analysis_result)
-        else:
+            
+            # --- AGGIUNTA IMPORTANTE QUI: Aggiungi document_name ai dati di Firestore ---
+            # Il frontend usa questo campo per il dropdown
+            final_analysis['document_name'] = os.path.basename(file_name) # Assuming perform_additional_calculations returns a dict.
+
+            # Estrai l'ID del documento Firestore qui, dopo che final_analysis è definita.
+            # Questo è l'ID pulito, senza percorsi.
+            document_id_firestore = os.path.splitext(os.path.basename(file_name))[0]
+            
+            # --- SALVA O AGGIORNA SU FIRESTORE (con user_id) ---
+            # Usa il nuovo ID pulito per il documento Firestore
+            firestore_save_success = save_to_firestore(document_id_firestore, final_analysis, user_id=user_id_for_firestore)
+            if not firestore_save_success:
+                print(f"AVVERTIMENTO: Il salvataggio/aggiornamento su Firestore per il documento {document_id_firestore} (user_id: {user_id_for_firestore if user_id_for_firestore else 'N/A'}) è fallito. L'analisi è stata completata ma il dato non è stato persistito in Firestore.")
+                # IMPORTANT: If Firestore save fails, we should return an error,
+                # otherwise the function will proceed to Cloud Storage save and might mask the real issue.
+                return {"status": "error", "message": "Failed to save analysis to Firestore."}
+            
+           # Costruisci il nome completo dell'oggetto nel bucket di output
+            # Esempio: "user_analyses/{UID}/nome_file_pulito.analysis_result.json"
+            output_blob_name = f"{output_folder}/{clean_file_name_for_firestore_id}_analysis_result.json"
+
+            output_bucket_name = "validatr-pitch-decks-output" 
+            output_bucket = storage_client.bucket(output_bucket_name)
+            output_blob = output_bucket.blob(output_blob_name)
+
+            try:
+                output_blob.upload_from_string(json.dumps(final_analysis, indent=2))
+                print(f"Analisi completa salvata/aggiornata in gs://{output_bucket_name}/{output_blob_name}")
+                
+                input_blob.delete()
+
+                return {"status": "success", "message": "PDF processed, analysis saved to CS and Firestore."}
+            except NotFound as e:
+                print(f"ERRORE CRITICO: Il bucket di output '{output_bucket_name}' non esiste o la funzione non ha i permessi. Dettaglio: {e}")
+                return {"status": "error", "message": f"Output bucket '{output_bucket_name}' not found or no permissions."}
+
+        else: # analysis_result is falsy (e.g., None)
             print("Errore: L'analisi non ha prodotto risultati validi o parsabili (probabilmente mock non attivo o errore GPT).")
             return {"status": "error", "message": "Analysis failed or returned invalid data."}
 
-        # Usiamo il nome del file (senza estensione) come ID documento Firestore
-        document_id = base_file_name 
-
-        # --- SALVA O AGGIORNA SU FIRESTORE (con user_id) ---
-        # user_id_for_firestore sar\u00E0 l'UID dell'utente finale, dell'admin, o None per il pubblico
-        firestore_save_success = save_to_firestore(document_id, final_analysis, user_id=user_id_for_firestore)
-        if not firestore_save_success:
-            print(f"AVVERTIMENTO: Il salvataggio/aggiornamento su Firestore per {document_id} (user_id: {user_id_for_firestore if user_id_for_firestore else 'N/A'}) \u00E8 fallito. L'analisi \u00E8 stata completata ma il dato non \u00E8 stato persistito in Firestore.")
-        
-        # --- SALVA O AGGIORNA SU CLOUD STORAGE ---
-        try:
-            output_blob.upload_from_string(json.dumps(final_analysis, indent=2))
-            print(f"Analisi completa salvata/aggiornata in gs://{output_bucket_name}/{output_blob_name}")
-            
-            backup_bucket_name = "validatr-pitch-decks-input-backup" # Definisci il nome del bucket di backup
-            backup_bucket = storage_client.bucket(backup_bucket_name)
-            backup_blob = backup_bucket.blob(file_name) # Mantieni lo stesso nome file
-
-            # Sposta il blob
-            new_blob = input_bucket.copy_blob(input_blob, backup_bucket, file_name)
-            input_blob.delete()
-            print(f"File '{file_name}' spostato con successo da '{bucket_name}' a '{backup_bucket_name}'.")
-            # --- FINE NUOVA LOGICA ---
-            return {"status": "success", "message": "PDF processed, analysis saved/updated to CS and Firestore."}
-        except NotFound as e:
-            print(f"ERRORE CRITICO: Il bucket di output '{output_bucket_name}' non esiste o la funzione non ha i permessi. Dettaglio: {e}")
-            print(f"Impossibile salvare il risultato per il file: {file_name}. L'analisi \u00E8 stata completata ma il salvataggio su CS \u00E8 fallito.")
-            return {"status": "error", "message": f"Output bucket '{output_bucket_name}' not found or no permissions. Analysis completed but result not saved to CS."}
-
-    except openai.APIError as e:
-        print(f"Errore API OpenAI: {e}")
-        return {"status": "error", "message": f"OpenAI API Error: {e}"}
-    except json.JSONDecodeError as e:
-        print(f"Errore nel parsing JSON della risposta GPT: {e}. Risposta GPT non valida.")
-        print(f"Risposta completa di GPT che ha causato l'errore:\n{e.doc}")
-        return {"status": "error", "message": f"GPT response not valid JSON: {e}"}
-    except PyPDF2.errors.PdfReadError as e:
-        print(f"Errore nella lettura del PDF: {e}")
-        return {"status": "error", "message": f"Failed to read PDF: {e}"}
     except Exception as e:
+        # Catch-all for any other unexpected errors
         print(f"ERRORE GENERALE NON CATTURATO: {e}")
-        print(f"Si \u00E8 verificato un errore inatteso durante l'elaborazione del file: {file_name}. L'esecuzione verr\u00E0 terminata come successo per evitare retry.")
-        return {"status": "error", "message": f"An unexpected error occurred: {e}. Execution terminated successfully to prevent retries."}
+        return {"status": "error", "message": f"An unexpected error occurred: {e}."}

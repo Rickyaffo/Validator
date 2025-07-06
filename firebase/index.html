@@ -1492,23 +1492,24 @@
                     return;
                 }
 
-                uploadStatusMessage.textContent = translations[currentLanguage].upload_in_progress;
-                uploadStatusMessage.style.color = '#475569';
+                // AGGIUNGI QUESTI LOG PER IL DEBUG:
+                console.log("DEBUG UPLOAD: utente autenticato?", user);
+                console.log("DEBUG UPLOAD: UID utente:", user.uid);
+                
+                const filePathInDefaultBucket = `validatr-pitch-decks-input-folder/user_uploads/${user.uid}/${file.name}`; 
+                const fileRef = ref(storage, filePathInDefaultBucket); 
 
                 try {
-                    const filePath = `user_uploads/${user.uid}/${file.name}`;
-                    const fileRef = ref(storage, `${PITCH_INPUT_BUCKET}/${filePath}`);
+                    await uploadBytes(fileRef, file, { customMetadata: { user_email: user.email } }); 
 
-                    await uploadBytes(fileRef, file);
                     uploadStatusMessage.textContent = translations[currentLanguage].upload_completed;
                     uploadStatusMessage.style.color = '#10b981';
-                    console.log('File uploaded successfully. Path:', filePath);
+                    console.log('File uploaded successfully. Path:', fileRef.fullPath);
 
                     setTimeout(() => {
                         uploadModal.classList.add('hidden');
                         fetchDataInBothDashboards(user);
                     }, 2000);
-
                 } catch (error) {
                     console.error("Error during file upload:", error);
                     uploadStatusMessage.textContent = `${translations[currentLanguage].upload_error}: ${error.message}`;
