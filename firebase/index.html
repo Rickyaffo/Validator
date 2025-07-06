@@ -326,8 +326,14 @@
                                         </select>
                                 </div>
                                 <div id="coherenceDetails" class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                    <p class="text-slate-700 font-medium mb-2" data-i18n-key="score_label">Punteggio: <span id="selectedCoherenceScore" class="font-bold">--</span></p>
-                                    <p class="text-slate-700" data-i18n-key="motivation_label">Motivazione: <span id="selectedCoherenceMotivation">Nessuna motivazione disponibile.</span></p>
+                                    <p class="text-slate-700 font-medium mb-2">
+                                        <span data-i18n-key="score_label">Punteggio:</span>
+                                        <span id="selectedCoherenceScore" class="font-bold text-slate-900 ml-1">--</span>
+                                    </p>
+                                    <p class="text-slate-700">
+                                        <span data-i18n-key="motivation_label">Motivazione:</span>
+                                        <span id="selectedCoherenceMotivation" class="block mt-1 text-slate-800">Nessuna motivazione disponibile.</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -1030,15 +1036,32 @@
 
                 // --- FUNZIONE PER AGGIORNARE I DETTAGLI (PUNTEGGIO E MOTIVAZIONE) ---
                 const updateSelectedCoherenceDetails = (selectedIndex) => {
-                    if (selectedIndex === "" || documentData.coherence_pairs[selectedIndex] === undefined) {
+                    console.log('--- DEBUG: Chiamata updateSelectedCoherenceDetails con index:', selectedIndex);
+
+                    // Controlla se l'indice non è valido (es. se è selezionata l'opzione di default)
+                    if (selectedIndex === "" || !documentData.coherence_pairs[selectedIndex]) {
+                        console.log('--- DEBUG: Indice non valido. Imposto i valori di default.');
                         selectedCoherenceScore.textContent = '--';
-                        selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
+                        selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available || 'Nessuna motivazione disponibile.';
                         return;
                     }
+
+                    // Ottieni l'oggetto con i dati della coppia selezionata
                     const selectedPair = documentData.coherence_pairs[selectedIndex];
-                    selectedCoherenceScore.textContent = selectedPair.punteggio_coppia;
-                    // NOTA: 'motivazione_coppia' è vuoto nel tuo JSON. Quando lo sistemerai nella Cloud Function, questo codice funzionerà.
-                    selectedCoherenceMotivation.textContent = selectedPair.motivazione_coppia[currentLanguage] || selectedPair.motivazione_coppia.it || translations[currentLanguage].no_motivation_available;
+                    console.log('--- DEBUG: Dati della coppia recuperati:', selectedPair);
+
+                    // Estrai punteggio e motivazione in variabili separate per chiarezza
+                    const score = selectedPair.punteggio_coppia;
+                    const motivationText = selectedPair.motivazione_coppia[currentLanguage] || selectedPair.motivazione_coppia.it || translations[currentLanguage].no_motivation_available;
+
+                    console.log('--- DEBUG: Punteggio che verrà visualizzato:', score);
+                    console.log('--- DEBUG: Motivazione che verrà visualizzata:', motivationText);
+
+                    // Aggiorna gli elementi HTML con i nuovi valori
+                    selectedCoherenceScore.textContent = score ?? '--';
+                    selectedCoherenceMotivation.textContent = motivationText ?? 'Nessuna motivazione disponibile.';
+                    
+                    console.log('--- DEBUG: Update completato. Contenuto del box dettagli:', document.getElementById('coherenceDetails').innerHTML);
                 };
 
                 // Imposta il valore di default (la prima coppia) e aggiorna i dettagli
@@ -1103,7 +1126,7 @@
                     coherenceDoughnutChart = null;
                 }
             }
-        }
+        }    
 
         // Function to retrieve all dashboard data (Home and Deal Flow) from Cloud Function API
         async function fetchDataInBothDashboards(user) {

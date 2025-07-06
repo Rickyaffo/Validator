@@ -1,5 +1,3 @@
-# main.py della tua Cloud Function 'process-pitch-deck' (trigger Cloud Storage)
-
 import functions_framework
 import json
 import io
