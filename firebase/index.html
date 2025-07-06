@@ -175,6 +175,69 @@
         height: 350px; /* Altezza adeguata */
         margin: 2rem auto; /* Centra il grafico */
     }
+
+    /* Stili per il contenitore di uno slider singolo */
+    .slider-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Stili per la riga che contiene etichetta e valore percentuale */
+    .slider-label-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .slider-label {
+        font-weight: 500;
+        color: #334155; /* slate-700 */
+    }
+
+    .slider-value {
+        font-weight: 600;
+        color: #0d9488; /* teal-600 */
+        background-color: #f0fdfa; /* teal-50 */
+        padding: 0.1rem 0.5rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    /* Stili per l'input di tipo range (lo slider) */
+    .weight-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 8px;
+        background: #e2e8f0; /* slate-200 */
+        border-radius: 5px;
+        outline: none;
+        transition: opacity .2s;
+    }
+
+    .weight-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #14b8a6; /* teal-500 */
+        cursor: pointer;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .weight-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #14b8a6; /* teal-500 */
+        cursor: pointer;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center">
@@ -244,14 +307,33 @@
             <div id="homeDashboard" class="flex flex-col w-full">
                 <header class="w-full container-padding mb-8 pt-8">
                     <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200">
-                        <h2 class="text-2xl font-bold text-slate-900 mb-4 sm:mb-0" data-i18n-key="detailed_dashboard_title">Dashboard Analisi Dettagliata</h2>
+                        <div class="flex-grow">
+                            <h2 class="text-2xl font-bold text-slate-900 mb-4" data-i18n-key="detailed_dashboard_title">Dashboard Analisi Dettagliata</h2>
+                            <div id="scoreModeSelector" class="flex items-center space-x-6 mb-4 sm:mb-0">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="scoreMode" value="validatr" checked class="form-radio h-5 w-5 text-teal-600 focus:ring-teal-500">
+                                    <span class="ml-2 text-slate-700 font-medium">Score Validatr™</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="scoreMode" value="custom" class="form-radio h-5 w-5 text-teal-600 focus:ring-teal-500">
+                                    <span class="ml-2 text-slate-700 font-medium">Il Mio Score</span>
+                                </label>
+                            </div>
+                        </div>
                         <div class="flex items-center space-x-4">
                             <label for="documentSelector" class="text-slate-700 font-medium" data-i18n-key="select_pitch_deck_label">Seleziona Pitch Deck:</label>
                             <select id="documentSelector" class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
-                                </select>
+                            </select>
                         </div>
                     </div>
                 </header>
+
+                <section id="customWeightsSection" class="card lg:col-span-2 mb-8 hidden">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-2">Personalizza Pesi Variabili</h3>
+                    <p class="text-slate-600 mb-6">Trascina gli slider per aggiustare l'importanza di ogni variabile. La somma totale resterà sempre 100%. Il "Final Adjusted Score" verrà ricalcolato dinamicamente.</p>
+                    <div id="weightsSlidersContainer" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                        </div>
+                </section>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
                     <section class="card lg:col-span-2 mb-8">
@@ -350,7 +432,7 @@
                             <label class="inline-flex items-center">
                                 <input type="radio" name="pitchFilter" value="my" checked class="form-radio text-teal-600 h-5 w-5">
                                 <span class="ml-2 text-slate-700 font-medium" data-i18n-key="my_pitches_radio">I Miei Pitch</span>
-                            </label>
+                                </label>
                         </div>
                     </div>
                 </header>
@@ -457,6 +539,21 @@
         let rankingChart = null;   
         let coherenceDoughnutChart = null; 
         let loadedAllData = {}; 
+
+        const scoreModeSelector = document.getElementById('scoreModeSelector');
+        const customWeightsSection = document.getElementById('customWeightsSection');
+        const weightsSlidersContainer = document.getElementById('weightsSlidersContainer');
+
+        
+        let userWeights = {
+            "Problema": 15,
+            "Target": 15,
+            "Soluzione": 15,
+            "Mercato": 15,
+            "MVP": 15,
+            "Team": 15,
+            "Ritorno Atteso": 10
+        };
 
         // Funzioni (definite globalmente nello script del modulo precedente)
         const auth = window.firebaseAuth;
@@ -815,37 +912,6 @@
         function updateMainDashboard(selectedDocumentId) {
             const documentData = loadedAllData[selectedDocumentId];
 
-            console.log("DEBUG: --- Inizio updateMainDashboard ---");
-            console.log("DEBUG: selectedDocumentId:", selectedDocumentId);
-            console.log("DEBUG: documentData (completo):", documentData); // VEDI QUI LA STRUTTURA GENERALE
-            
-            // Controlla la sezione core_metrics
-            console.log("DEBUG: documentData.core_metrics:", documentData.core_metrics);
-            if (documentData.core_metrics) {
-                console.log("DEBUG: coreMetrics.final_adjusted_score:", documentData.core_metrics.final_adjusted_score);
-                console.log("DEBUG: coreMetrics.classe_pitch:", documentData.core_metrics.classe_pitch);
-            }
-
-            // Controlla la sezione variables
-            console.log("DEBUG: documentData.variables:", documentData.variables);
-            if (documentData.variables && documentData.variables.length > 0) {
-                console.log("DEBUG: Prima variabile:", documentData.variables[0]);
-                console.log("DEBUG: Motivazione della prima variabile:", documentData.variables[0].motivazione_variabile);
-                console.log("DEBUG: Motivazione della prima variabile (IT):", documentData.variables[0].motivazione_variabile.it);
-                console.log("DEBUG: Motivazione della prima variabile (EN):", documentData.variables[0].motivazione_variabile.en);
-            }
-
-            // Controlla la sezione coherence_pairs
-            console.log("DEBUG: documentData.coherence_pairs:", documentData.coherence_pairs);
-            if (documentData.coherence_pairs && documentData.coherence_pairs.length > 0) {
-                console.log("DEBUG: Prima coppia di coerenza:", documentData.coherence_pairs[0]);
-                console.log("DEBUG: Motivazione della prima coppia di coerenza:", documentData.coherence_pairs[0].motivazione_coppia);
-                console.log("DEBUG: Motivazione della prima coppia di coerenza (IT):", documentData.coherence_pairs[0].motivazione_coppia.it);
-                console.log("DEBUG: Motivazione della prima coppia di coerenza (EN):", documentData.coherence_pairs[0].motivazione_coppia.en);
-            }
-            console.log("DEBUG: currentLanguage:", currentLanguage);
-            console.log("DEBUG: --- Fine Inizio updateMainDashboard ---");
-
             noCoreMetricsDataDiv.classList.add('hidden');
             noDataChartDiv.classList.add('hidden');
             noDataTableDiv.classList.add('hidden');
@@ -856,6 +922,20 @@
             if (!documentData) {
                 clearMainDashboard();
                 return;
+            }
+
+            const selectedMode = document.querySelector('input[name="scoreMode"]:checked').value;
+
+            if (selectedMode === 'validatr') {
+                customWeightsSection.classList.add('hidden');
+                // Ripristina il valore originale dal backend
+                if(documentData && documentData.core_metrics) {
+                    finalAdjustedScoreValue.textContent = documentData.core_metrics.final_adjusted_score ? documentData.core_metrics.final_adjusted_score.toFixed(2) : '--';
+                }
+            } else {
+                customWeightsSection.classList.remove('hidden');
+                initializeSliders(); // Crea o aggiorna gli slider
+                recalculateAndDisplayMyScore(); // Esegui subito il primo calcolo
             }
 
             // Update summary scorecards (using core_metrics)
@@ -1126,6 +1206,22 @@
                     coherenceDoughnutChart = null;
                 }
             }
+
+            if (selectedMode === 'validatr') {
+                customWeightsSection.classList.add('hidden');
+                if (documentData && documentData.core_metrics) {
+                    // Ripristina il punteggio originale
+                    finalAdjustedScoreValue.textContent = documentData.core_metrics.final_adjusted_score ? documentData.core_metrics.final_adjusted_score.toFixed(2) : '--';
+                    
+                    // --- LOGICA AGGIORNATA PER LA CLASSE PITCH ---
+                    // Ripristina la classe pitch originale usando la funzione di supporto
+                    updatePitchClassUI(documentData.core_metrics.classe_pitch);
+                }
+            } else {
+                customWeightsSection.classList.remove('hidden');
+                initializeSliders();
+                recalculateAndDisplayMyScore();
+            }
         }    
 
         // Function to retrieve all dashboard data (Home and Deal Flow) from Cloud Function API
@@ -1343,6 +1439,183 @@
             }
         }
 
+        /**
+         * NUOVA FUNZIONE DI SUPPORTO
+         * Aggiorna la UI della card "Classe Pitch" in base alla classe fornita.
+         * @param {string} className - Il nome della classe (es. "INVESTIRE").
+         */
+        function updatePitchClassUI(className) {
+            if (!className) return; // Non fare nulla se la classe non è valida
+
+            const pitchClassKey = `class_${className}`;
+            pitchClassValue.textContent = translations[currentLanguage][pitchClassKey] || className;
+
+            // Definisci le classi CSS da manipolare
+            const scorecardClasses = ['bg-class-investire', 'bg-class-monitorare', 'bg-class-verificare', 'bg-class-pass', 'bg-class-default-scorecard'];
+            const iconClasses = ['score-class-investire', 'score-class-monitorare', 'score-class-verificare', 'score-class-pass', 'score-class-default'];
+            
+            const lowerCaseClass = className.toLowerCase();
+
+            // Aggiorna il box "Classe Pitch" (logica esistente)
+            pitchClassCard.classList.remove(...scorecardClasses);
+            pitchClassCard.classList.add(`bg-class-${lowerCaseClass}`);
+            pitchClassIcon.classList.remove(...iconClasses);
+            pitchClassIcon.classList.add(`score-class-${lowerCaseClass}`);
+
+            // --- NUOVO: Aggiorna le icone degli altri due box ---
+
+            // 1. Aggiorna l'icona dello "Score Finale Regolato"
+            finalAdjustedScoreIcon.classList.remove(...iconClasses);
+            finalAdjustedScoreIcon.classList.add(`score-class-${lowerCaseClass}`);
+
+            // 2. Aggiorna l'icona dell'"Indice di Coerenza"
+            coherenceIndexIcon.classList.remove(...iconClasses);
+            coherenceIndexIcon.classList.add(`score-class-${lowerCaseClass}`);
+        }
+
+        function recalculateAndDisplayMyScore() {
+            const selectedDocId = documentSelector.value;
+            if (!selectedDocId || !loadedAllData[selectedDocId]) return;
+
+            const variables = loadedAllData[selectedDocId].variables;
+            if (!variables || variables.length === 0) return;
+
+            let newWeightedScore = 0;
+            variables.forEach(variable => {
+                const variableName = variable.nome_variabile;
+                const variableScore = variable.punteggio_variabile;
+                const weight = userWeights[variableName] / 100;
+                newWeightedScore += variableScore * weight;
+            });
+
+            finalAdjustedScoreValue.textContent = newWeightedScore.toFixed(2);
+
+            // --- LOGICA AGGIORNATA PER LA CLASSE PITCH ---
+
+            // 1. Determina la nuova classe in base alle soglie
+            let newClass = 'PASS'; // Classe di default
+            if (newWeightedScore >= 77) {
+                newClass = 'INVESTIRE';
+            } else if (newWeightedScore >= 63) {
+                newClass = 'MONITORARE';
+            } else if (newWeightedScore >= 40) {
+                newClass = 'VERIFICARE';
+            }
+            // 2. Chiama la funzione di supporto per aggiornare la UI
+            updatePitchClassUI(newClass);
+        }
+
+        /**
+         * NUOVA FUNZIONE
+         * Gestisce il cambiamento di un singolo slider, ridistribuendo i pesi sugli altri.
+         * @param {string} changedVarName - Il nome della variabile il cui slider è stato mosso.
+         */
+        function handleSliderChange(changedVarName) {
+            const sliders = document.querySelectorAll('.weight-slider');
+            const total = 100;
+            let currentTotal = 0;
+            
+            // Calcola la somma attuale di tutti gli slider
+            sliders.forEach(s => currentTotal += parseFloat(s.value));
+
+            const changedSlider = document.querySelector(`.weight-slider[data-variable="${changedVarName}"]`);
+            const changedValue = parseFloat(changedSlider.value);
+            const oldValue = userWeights[changedVarName];
+            const delta = changedValue - oldValue;
+
+            userWeights[changedVarName] = changedValue; // Aggiorna il peso della variabile modificata
+
+            // Se la somma non è 100, ridistribuisci la differenza sugli altri slider
+            if (delta !== 0) {
+                const otherSliders = Array.from(sliders).filter(s => s.dataset.variable !== changedVarName);
+                let otherSlidersTotalWeight = 0;
+                otherSliders.forEach(s => otherSlidersTotalWeight += userWeights[s.dataset.variable]);
+                
+                let remainingDelta = delta;
+
+                // Distribuisci la differenza negativa
+                for (const slider of otherSliders) {
+                    const varName = slider.dataset.variable;
+                    if (remainingDelta === 0) break;
+                    
+                    const proportion = userWeights[varName] / otherSlidersTotalWeight;
+                    let change = remainingDelta * proportion;
+                    
+                    let newValue = userWeights[varName] - change;
+
+                    // Assicurati che il nuovo valore non vada sotto zero
+                    if (newValue < 0) {
+                        change += newValue; // Riduci la modifica per non andare sotto zero
+                        newValue = 0;
+                    }
+                    
+                    userWeights[varName] = newValue;
+                    remainingDelta -= change;
+                }
+            }
+
+            // Arrotonda e normalizza per evitare errori di calcolo con i float
+            let finalTotal = 0;
+            Object.keys(userWeights).forEach(key => finalTotal += userWeights[key]);
+
+            const normalizationFactor = total / finalTotal;
+            Object.keys(userWeights).forEach(key => {
+                userWeights[key] *= normalizationFactor;
+            });
+            
+            // Aggiorna la UI
+            updateAllSlidersUI();
+            recalculateAndDisplayMyScore();
+        }
+
+        /**
+         * NUOVA FUNZIONE
+         * Aggiorna la posizione e il valore testuale di tutti gli slider.
+         */
+        function updateAllSlidersUI() {
+             Object.keys(userWeights).forEach(varName => {
+                const slider = document.querySelector(`.weight-slider[data-variable="${varName}"]`);
+                const valueSpan = document.querySelector(`.slider-value[data-variable="${varName}"]`);
+                if(slider && valueSpan) {
+                    const weight = userWeights[varName];
+                    slider.value = weight;
+                    valueSpan.textContent = `${weight.toFixed(1)}%`;
+                }
+            });
+        }
+        
+        /**
+         * NUOVA FUNZIONE
+         * Crea e popola la sezione degli slider la prima volta.
+         */
+        function initializeSliders() {
+            weightsSlidersContainer.innerHTML = ''; // Pulisci il contenitore
+            const variableOrder = ["Problema", "Target", "Soluzione", "Mercato", "MVP", "Team", "Ritorno Atteso"];
+
+            variableOrder.forEach(varName => {
+                const weight = userWeights[varName];
+                const translatedVarName = translations[currentLanguage][`variable_${varName.replace(/\s/g, '')}`] || varName;
+
+                const sliderHTML = `
+                    <div class="slider-container">
+                        <div class="slider-label-container">
+                            <label class="slider-label">${translatedVarName}</label>
+                            <span class="slider-value" data-variable="${varName}">${weight.toFixed(1)}%</span>
+                        </div>
+                        <input type="range" min="0" max="100" step="0.1" value="${weight}" class="weight-slider" data-variable="${varName}">
+                    </div>
+                `;
+                weightsSlidersContainer.innerHTML += sliderHTML;
+            });
+
+            // Aggiungi gli event listener
+            document.querySelectorAll('.weight-slider').forEach(slider => {
+                slider.addEventListener('input', (event) => {
+                    handleSliderChange(event.target.dataset.variable);
+                });
+            });
+        }
+
 
         // Event Listeners
         document.addEventListener('DOMContentLoaded', () => {
@@ -1352,6 +1625,14 @@
             // Language selector change listener
             document.getElementById('languageSelector').addEventListener('change', (event) => {
                 setLanguage(event.target.value);
+            });
+
+            document.querySelectorAll('input[name="scoreMode"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    // Quando cambi modalità, riesegui l'aggiornamento della dashboard
+                    // per mostrare/nascondere la sezione e ricalcolare.
+                    updateMainDashboard(documentSelector.value);
+                });
             });
 
             // Authentication Management
