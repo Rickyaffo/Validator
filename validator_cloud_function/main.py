@@ -8,6 +8,9 @@ from google.cloud import storage
 from google.api_core.exceptions import NotFound # Importa l'eccezione specifica per "Not Found"
 from google.cloud import bigquery # Importa il client BigQuery
 
+import vertexai
+from vertexai.generative_models import GenerativeModel
+
 # --- Inizializzazione Firebase e Firestore ---
 # Per l'ambiente Canvas, le variabili __app_id e __firebase_config sono globali.
 # In un ambiente standard GCP, dovresti caricare la tua service account key in modo sicuro.
@@ -15,6 +18,12 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 from firebase_admin import auth # Nuovo import per la gestione utenti Firebase
+
+# Inizializza il client di Vertex AI. Questo viene fatto solo una volta quando
+# l'istanza della funzione si avvia, non a ogni chiamata.
+PROJECT_ID = "validatr-mvp"  # L'ID del tuo progetto Google Cloud
+LOCATION = "us-central1"   # La region della tua funzione, es: europe-west1
+vertexai.init(project=PROJECT_ID, location=LOCATION)
 
 # Inizializzazione Firebase solo se non è già stata inizializzata
 if not firebase_admin._apps:
@@ -539,6 +548,30 @@ def process_pitch_deck(cloud_event):
 
         all_text = all_text.replace('\n\n', '\n').strip()
         print(f"Testo estratto dal PDF (primi 500 caratteri): {all_text[:500]}...")
+
+        try:
+            print("INFO: Inizio della generazione del riassunto con Gemini.")
+            gemini_model = GenerativeModel("gemini-1.0-pro")
+            prompt_summary = f"""
+Sei un analista finanziario esperto. Il tuo compito è analizzare il testo di un pitch deck e creare un riassunto conciso.
+Basandoti sul seguente testo estratto da un pitch deck, genera un riassunto dell'idea di business in un massimo di 3 righe.
+Il riassunto deve essere chiaro, diretto e catturare l'essenza del prodotto, il problema che risolve e il suo target principale.
+
+Testo del Pitch Deck:
+---
+{all_text}
+---
+"""
+         #   response_summary = gemini_model.generate_content(prompt_summary)
+        #    executive_summary = response_summary.text
+            
+            # Stampa il riassunto generato nei log
+            print("--- RIASSUNTO GENERATO DA GEMINI ---")
+         #   print(executive_summary)
+            print("------------------------------------")
+        except Exception as e:
+            print(f"ERRORE durante la generazione del riassunto con Gemini: {e}")
+       #     executive_summary = None # Assicura che la variabile esista anche in caso di errore
 
         analysis_result = analyze_pitch_deck_with_gpt(all_text) 
         

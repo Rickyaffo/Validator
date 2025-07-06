@@ -455,17 +455,27 @@
 
     <div id="uploadModal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center hidden">
         <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg mx-4">
-            <h2 class="text-2xl font-semibold text-slate-800 mb-6" data-i18n-key="upload_modal_title">Carica un Nuovo Pitch Deck</h2>
-            <p class="text-slate-600 mb-4" data-i18n-key="upload_modal_desc">Seleziona un file PDF da caricare per l'analisi.</p>
-            <input type="file" id="fileInput" accept=".pdf" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
-            <button id="uploadFileBtn" class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200 flex items-center justify-center">
-                <span class="material-icons-outlined text-xl mr-2">cloud_upload</span>
-                <span data-i18n-key="upload_file_button">Carica File</span>
-            </button>
-            <p id="uploadStatusMessage" class="mt-4 text-center text-slate-700"></p>
-            <button id="closeUploadModalBtn" class="mt-6 w-full px-6 py-3 bg-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-opacity-50 transition duration-200" data-i18n-key="close_button">
-                Chiudi
-            </button>
+            
+            <div id="uploadDefaultView">
+                <h2 class="text-2xl font-semibold text-slate-800 mb-6" data-i18n-key="upload_modal_title">Carica un Nuovo Pitch Deck</h2>
+                <p class="text-slate-600 mb-4" data-i18n-key="upload_modal_desc">Seleziona un file PDF da caricare per l'analisi.</p>
+                <input type="file" id="fileInput" accept=".pdf" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <button id="uploadFileBtn" class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200 flex items-center justify-center">
+                    <span class="material-icons-outlined text-xl mr-2">cloud_upload</span>
+                    <span data-i18n-key="upload_file_button">Carica File</span>
+                </button>
+                <p id="uploadStatusMessage" class="mt-4 text-center text-slate-700"></p>
+                <button id="closeUploadModalBtn" class="mt-6 w-full px-6 py-3 bg-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-opacity-50 transition duration-200" data-i18n-key="close_button">
+                    Chiudi
+                </button>
+            </div>
+
+            <div id="uploadProcessingView" class="hidden text-center py-8">
+                <div class="spinner mx-auto mb-6"></div>
+                <h3 class="text-xl font-semibold text-slate-800" data-i18n-key="upload_processing_title">Analisi in corso...</h3>
+                <p class="text-slate-600 mt-2" data-i18n-key="upload_processing_desc">Il tuo pitch deck è in fase di analisi. La dashboard si aggiornerà automaticamente.</p>
+            </div>
+
         </div>
     </div>
 
@@ -663,7 +673,10 @@
                 class_PASS: "PASS",
                 chart_score_label: "Punteggio (0-100)",
                 chart_variable_label: "Variabile",
-                chart_pitch_deck_label: "Pitch Deck"
+                chart_pitch_deck_label: "Pitch Deck",
+                upload_processing_title: "Analisi in corso...",
+                upload_processing_desc: "Il tuo pitch deck è in fase di analisi. La dashboard si aggiornerà automaticamente.",
+                upload_success_analysis_starts: "Caricamento completato! Inizio dell'analisi..."
             },
             en: {
                 app_title: "VALIDATR™ - Complete Dashboard",
@@ -754,7 +767,10 @@
                 class_PASS: "PASS",
                 chart_score_label: "Score (0-100)",
                 chart_variable_label: "Variable",
-                chart_pitch_deck_label: "Pitch Deck"
+                chart_pitch_deck_label: "Pitch Deck",
+                upload_processing_title: "Analysis in progress...",
+                upload_processing_desc: "Your pitch deck is being analyzed. The dashboard will update automatically.",
+                upload_success_analysis_starts: "Upload complete! Starting analysis..."
             }
         };
 
@@ -1824,29 +1840,54 @@
                     uploadStatusMessage.style.color = '#ef4444';
                     return;
                 }
-
-                // AGGIUNGI QUESTI LOG PER IL DEBUG:
-                console.log("DEBUG UPLOAD: utente autenticato?", user);
-                console.log("DEBUG UPLOAD: UID utente:", user.uid);
                 
                 const filePathInDefaultBucket = `validatr-pitch-decks-input-folder/user_uploads/${user.uid}/${file.name}`; 
                 const fileRef = ref(storage, filePathInDefaultBucket); 
 
-                try {
-                    await uploadBytes(fileRef, file, { customMetadata: { user_email: user.email } }); 
+                // Elementi del modale
+                const defaultView = document.getElementById('uploadDefaultView');
+                const processingView = document.getElementById('uploadProcessingView');
 
-                    uploadStatusMessage.textContent = translations[currentLanguage].upload_completed;
+                try {
+                    uploadFileBtn.disabled = true;
+                    uploadStatusMessage.textContent = translations[currentLanguage].upload_in_progress;
+                    uploadStatusMessage.style.color = '#475569';
+                    
+                    await uploadBytes(fileRef, file, { customMetadata: { user_email: user.email } }); 
+                    
+                    // L'upload è finito, ora inizia la fase di "analisi"
+                    uploadStatusMessage.textContent = translations[currentLanguage].upload_success_analysis_starts;
                     uploadStatusMessage.style.color = '#10b981';
                     console.log('File uploaded successfully. Path:', fileRef.fullPath);
 
+                    // Nascondi la vista di default e mostra quella di processing
+                    defaultView.classList.add('hidden');
+                    processingView.classList.remove('hidden');
+
+                    // Imposta il timer di 7 secondi
                     setTimeout(() => {
+                        // Nascondi il modale
                         uploadModal.classList.add('hidden');
+                        
+                        // Aggiorna i dati della dashboard
                         fetchDataInBothDashboards(user);
-                    }, 2000);
+
+                        // Resetta il modale per il prossimo utilizzo
+                        setTimeout(() => {
+                            defaultView.classList.remove('hidden');
+                            processingView.classList.add('hidden');
+                            fileInput.value = ''; // Pulisci l'input del file
+                            uploadStatusMessage.textContent = '';
+                            uploadFileBtn.disabled = false;
+                        }, 500); // Piccolo ritardo per non vedere il flash del reset
+
+                    }, 15000); // 15 secondi di attesa
+
                 } catch (error) {
                     console.error("Error during file upload:", error);
                     uploadStatusMessage.textContent = `${translations[currentLanguage].upload_error}: ${error.message}`;
                     uploadStatusMessage.style.color = '#ef4444';
+                    uploadFileBtn.disabled = false; // Riabilita il pulsante in caso di errore
                 }
             });
         });
