@@ -200,7 +200,7 @@ Testo del pitch deck da analizzare:
         model="gpt-4.1-nano", 
         messages=messages,
         temperature=0.1,
-        max_tokens=4096,
+        max_tokens=3500,
         response_format={"type": "json_object"}
     )
 
@@ -346,6 +346,36 @@ def get_dashboard_data(request):
     except Exception as e:
         print(f"Errore nella funzione get_dashboard_data: {e}")
         return json.dumps({"error": str(e)}), 500, headers
+    
+def generate_summary_with_openai(pitch_text):
+    """
+    Usa OpenAI per generare un riassunto conciso del pitch deck.
+    """
+    try:
+        print("INFO: Inizio generazione riassunto con OpenAI.")
+        
+        system_prompt = "Sei un analista finanziario esperto. Genera un riassunto di un pitch deck in massimo 3 righe, catturando l'essenza del prodotto, il problema che risolve e il suo target principale."
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Basandoti su questo testo, crea il riassunto:\n\n{pitch_text}"}
+        ]
+
+        response = openai.chat.completions.create(
+            model="gpt-4.1-nano",
+            messages=messages,
+            temperature=0.1,
+            max_tokens=250  # Un numero di token sufficiente per un riassunto
+        )
+
+        summary = response.choices[0].message.content
+        print("--- RIASSUNTO GENERATO DA OPENAI ---")
+        print(summary)
+        return summary.strip()
+        
+    except Exception as e:
+        print(f"ERRORE durante la generazione del riassunto con OpenAI: {e}")
+        return "Riassunto non disponibile a causa di un errore."
 
 @functions_framework.cloud_event
 def process_pitch_deck(cloud_event):
@@ -396,29 +426,8 @@ def process_pitch_deck(cloud_event):
         all_text = all_text.replace('\n\n', '\n').strip()
         print(f"Testo estratto dal PDF (primi 500 caratteri): {all_text[:500]}...")
 
-        # --- MODIFICA ARCHITETTURALE: Generazione sommario con Gemini ---
-        executive_summary = None  # Inizializza la variabile
-        try:
-            print("INFO: Inizio della generazione del riassunto con Gemini.")
-            gemini_model = GenerativeModel("gemini-pro")
-            prompt_summary = f"""Sei un analista finanziario esperto. Il tuo compito è analizzare il testo di un pitch deck e creare un riassunto conciso.
-Basandoti sul seguente testo estratto da un pitch deck, genera un riassunto dell'idea di business in un massimo di 3 righe.
-Il riassunto deve essere chiaro, diretto e catturare l'essenza del prodotto, il problema che risolve e il suo target principale.
-
-Testo del Pitch Deck:
----
-{all_text}
----
-"""
-            response_summary = gemini_model.generate_content(prompt_summary)
-            executive_summary = response_summary.text
-            
-            print("--- RIASSUNTO GENERATO DA GEMINI ---")
-            print(executive_summary)
-            print("------------------------------------")
-        except Exception as e:
-            print(f"ERRORE durante la generazione del riassunto con Gemini: {e}")
-            executive_summary = "Riassunto non disponibile a causa di un errore."
+  
+        executive_summary = generate_summary_with_openai(all_text)
 
         # Esegue l'analisi principale tramite l'IA
         analysis_result = analyze_pitch_deck_with_gpt(all_text)

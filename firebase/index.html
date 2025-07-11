@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -36,6 +37,7 @@
         const db = getFirestore(app);
         const storage = getStorage(app);
 
+
         // Espongo le istanze globalmente per lo script principale
         window.firebaseApp = app;
         window.firebaseAuth = auth;
@@ -62,48 +64,71 @@
 
     <style>
         body {
-            font-family: 'Roboto', sans-serif; /* Font Changed to Roboto */
-            background-color: #f8fafc; /* slate-50 */
+            font-family: 'Roboto', sans-serif;
+            /* Font Changed to Roboto */
+            background-color: #f8fafc;
+            /* slate-50 */
             min-height: 100vh;
             padding-bottom: 2rem;
         }
+
         .container-padding {
             padding-left: 1rem;
             padding-right: 1rem;
         }
-        @media (min-width: 640px) { /* sm */
+
+        @media (min-width: 640px) {
+
+            /* sm */
             .container-padding {
                 padding-left: 2rem;
                 padding-right: 2rem;
             }
         }
-        @media (min-width: 1024px) { /* lg */
+
+        @media (min-width: 1024px) {
+
+            /* lg */
             .container-padding {
                 padding-left: 4rem;
                 padding-right: 4rem;
             }
         }
+
         .card {
             background-color: white;
-            border-radius: 0.75rem; /* rounded-xl */
-            padding: 1.5rem; /* p-6 */
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-lg */
-            border: 1px solid #e2e8f0; /* slate-200 */
+            border-radius: 0.75rem;
+            /* rounded-xl */
+            padding: 1.5rem;
+            /* p-6 */
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            /* shadow-lg */
+            border: 1px solid #e2e8f0;
+            /* slate-200 */
         }
+
         .chart-container {
             position: relative;
             width: 100%;
-            max-width: 900px; /* Larghezza massima per il grafico */
+            max-width: 900px;
+            /* Larghezza massima per il grafico */
             margin-left: auto;
             margin-right: auto;
-            height: 500px; /* Altezza base per un buon numero di barre */
-            max-height: 700px; /* Altezza massima */
+            height: 500px;
+            /* Altezza base per un buon numero di barre */
+            max-height: 700px;
+            /* Altezza massima */
         }
-        @media (max-width: 768px) { /* Adattamento per tablet/mobile */
+
+        @media (max-width: 768px) {
+
+            /* Adattamento per tablet/mobile */
             .chart-container {
-                height: 400px; /* Riduci altezza per schermi più piccoli */
+                height: 400px;
+                /* Riduci altezza per schermi più piccoli */
             }
         }
+
         .loading-overlay {
             position: absolute;
             top: 0;
@@ -117,144 +142,262 @@
             border-radius: 0.75rem;
             z-index: 10;
         }
+
         .spinner {
-            border: 4px solid #f3f3f3; /* Light grey */
-            border-top: 4px solid #0d9488; /* Teal */
+            border: 4px solid #f3f3f3;
+            /* Light grey */
+            border-top: 4px solid #0d9488;
+            /* Teal */
             border-radius: 50%;
             width: 40px;
             height: 40px;
             animation: spin 1s linear infinite;
         }
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .scorecard-item {
-        display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1rem;
-        background-color: #f8fafc; /* slate-50 */
-        border-radius: 0.5rem; /* rounded-lg */
-        border: 1px solid #e2e8f0; /* slate-200 */
-        transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
-    }
-    .scorecard-value { font-size: 2.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem; }
-    .scorecard-label { font-size: 0.875rem; font-weight: 500; color: #475569; text-align: center; }
-    .score-icon {
-        font-size: 2.5rem; margin-bottom: 0.5rem; font-family: 'Material Icons Outlined'; font-weight: normal; font-style: normal;
-        display: inline-block; line-height: 1; text-transform: none; letter-spacing: normal; word-wrap: normal; white-space: nowrap; direction: ltr;
-        -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; -moz-osx-font-smoothing: grayscale; font-feature-settings: 'liga';
-    }
-    /* Icon Colors (Aggiornate per i nuovi stati) */
-    .score-class-investire { color: #10b981; } /* emerald-500 */
-    .score-class-monitorare { color: #f59e0b; } /* amber-500 */
-    .score-class-verificare { color: #f97316; } /* orange-600 */
-    .score-class-pass { color: #ef4444; } /* red-500 */
-    .score-class-default { color: #64748b; } /* slate-500 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background-color: #f8fafc;
+            /* slate-50 */
+            border-radius: 0.5rem;
+            /* rounded-lg */
+            border: 1px solid #e2e8f0;
+            /* slate-200 */
+            transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+        }
 
-    /* Background Colors for Scorecards (Aggiornate per i nuovi stati) */
-    .bg-class-investire { background-color: #d1fae5; border-color: #10b981; } /* emerald-100, emerald-500 */
-    .bg-class-monitorare { background-color: #fef3c7; border-color: #f59e0b; } /* amber-100, amber-500 */
-    .bg-class-verificare { background-color: #ffedd5; border-color: #f97316; } /* orange-100, orange-600 */
-    .bg-class-pass { background-color: #fee2e2; border-color: #ef4444; } /* red-100, red-500 */
-    .bg-class-default-scorecard { background-color: #f8fafc; border-color: #e2e8f0; } /* slate-50, slate-200 */
+        .scorecard-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
 
-    /* Stile Cerchio Profilo */
-    .profile-circle {
-        width: 40px; height: 40px; border-radius: 50%; background-color: #10b981;
-        color: white; display: flex; align-items: center; justify-content: center; font-weight: 600;
-        font-size: 1.25rem; cursor: pointer; border: 2px solid #0d9488;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .profile-circle-icon { font-size: 1.75rem; }
+        .scorecard-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #475569;
+            text-align: center;
+        }
 
-    /* Stilizzazione specifica per il Doughnut Chart */
-    .doughnut-chart-container {
-        position: relative;
-        width: 100%;
-        max-width: 350px; /* Larghezza adeguata per un doughnut chart */
-        height: 350px; /* Altezza adeguata */
-        margin: 2rem auto; /* Centra il grafico */
-    }
+        .score-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-family: 'Material Icons Outlined';
+            font-weight: normal;
+            font-style: normal;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            -moz-osx-font-smoothing: grayscale;
+            font-feature-settings: 'liga';
+        }
 
-    /* Stili per il contenitore di uno slider singolo */
-    .slider-container {
-        display: flex;
-        flex-direction: column;
-    }
+        /* Icon Colors (Aggiornate per i nuovi stati) */
+        .score-class-investire {
+            color: #10b981;
+        }
 
-    /* Stili per la riga che contiene etichetta e valore percentuale */
-    .slider-label-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
+        /* emerald-500 */
+        .score-class-monitorare {
+            color: #f59e0b;
+        }
 
-    .slider-label {
-        font-weight: 500;
-        color: #334155; /* slate-700 */
-    }
+        /* amber-500 */
+        .score-class-verificare {
+            color: #f97316;
+        }
 
-    .slider-value {
-        font-weight: 600;
-        color: #0d9488; /* teal-600 */
-        background-color: #f0fdfa; /* teal-50 */
-        padding: 0.1rem 0.5rem;
-        border-radius: 0.5rem;
-        font-size: 0.875rem;
-    }
+        /* orange-600 */
+        .score-class-pass {
+            color: #ef4444;
+        }
 
-    /* Stili per l'input di tipo range (lo slider) */
-    .weight-slider {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 100%;
-        height: 8px;
-        background: #e2e8f0; /* slate-200 */
-        border-radius: 5px;
-        outline: none;
-        transition: opacity .2s;
-    }
+        /* red-500 */
+        .score-class-default {
+            color: #64748b;
+        }
 
-    .weight-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 20px;
-        height: 20px;
-        background: #14b8a6; /* teal-500 */
-        cursor: pointer;
-        border-radius: 50%;
-        border: 2px solid white;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
+        /* slate-500 */
 
-    .weight-slider::-moz-range-thumb {
-        width: 20px;
-        height: 20px;
-        background: #14b8a6; /* teal-500 */
-        cursor: pointer;
-        border-radius: 50%;
-        border: 2px solid white;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
+        /* Background Colors for Scorecards (Aggiornate per i nuovi stati) */
+        .bg-class-investire {
+            background-color: #d1fae5;
+            border-color: #10b981;
+        }
 
+        /* emerald-100, emerald-500 */
+        .bg-class-monitorare {
+            background-color: #fef3c7;
+            border-color: #f59e0b;
+        }
+
+        /* amber-100, amber-500 */
+        .bg-class-verificare {
+            background-color: #ffedd5;
+            border-color: #f97316;
+        }
+
+        /* orange-100, orange-600 */
+        .bg-class-pass {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+
+        /* red-100, red-500 */
+        .bg-class-default-scorecard {
+            background-color: #f8fafc;
+            border-color: #e2e8f0;
+        }
+
+        /* slate-50, slate-200 */
+
+
+
+        /* Stile Cerchio Profilo */
+        .profile-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #10b981;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.25rem;
+            cursor: pointer;
+            border: 2px solid #0d9488;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-circle-icon {
+            font-size: 1.75rem;
+        }
+
+        /* Stilizzazione specifica per il Doughnut Chart */
+        .doughnut-chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 350px;
+            /* Larghezza adeguata per un doughnut chart */
+            height: 350px;
+            /* Altezza adeguata */
+            margin: 2rem auto;
+            /* Centra il grafico */
+        }
+
+        /* Stili per il contenitore di uno slider singolo */
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Stili per la riga che contiene etichetta e valore percentuale */
+        .slider-label-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .slider-label {
+            font-weight: 500;
+            color: #334155;
+            /* slate-700 */
+        }
+
+        .slider-value {
+            font-weight: 600;
+            color: #0d9488;
+            /* teal-600 */
+            background-color: #f0fdfa;
+            /* teal-50 */
+            padding: 0.1rem 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* Stili per l'input di tipo range (lo slider) */
+        .weight-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            /* slate-200 */
+            border-radius: 5px;
+            outline: none;
+            transition: opacity .2s;
+        }
+
+        .weight-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #14b8a6;
+            /* teal-500 */
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .weight-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #14b8a6;
+            /* teal-500 */
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
     </style>
 </head>
+
 <body class="min-h-screen flex flex-col items-center">
     <header class="w-full bg-white shadow-lg border-b border-slate-200 fixed top-0 z-20">
         <div class="container-padding mx-auto py-4 flex flex-wrap items-center justify-between">
             <div class="flex items-center mb-4 md:mb-0">
-                <img src="https://storage.googleapis.com/validatr-statics-assets/logo2.PNG" alt="VALIDATR Logo" class="h-10 w-10 mr-3 rounded-md">
+                <img src="https://storage.googleapis.com/validatr-statics-assets/logo2.PNG" alt="VALIDATR Logo"
+                    class="h-10 w-10 mr-3 rounded-md">
                 <h1 class="text-2xl sm:text-3xl font-bold text-slate-900" data-i18n-key="app_title">VALIDATR™</h1>
             </div>
 
-            <nav class="flex space-x-4 sm:space-x-6 mb-4 md:mb-0 order-3 md:order-2 w-full md:w-auto justify-center md:justify-start">
-                <a href="#" id="navHome" class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600" data-i18n-key="nav_home">Home (Dashboard Dettagliata)</a>
-                <a href="#" id="navDealFlow" class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600" data-i18n-key="nav_deal_flow">Deal Flow (Ranking Investitori)</a>
+            <nav
+                class="flex space-x-4 sm:space-x-6 mb-4 md:mb-0 order-3 md:order-2 w-full md:w-auto justify-center md:justify-start">
+                <a href="#" id="navHome"
+                    class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600"
+                    data-i18n-key="nav_home">Home (Dashboard Dettagliata)</a>
+                <a href="#" id="navDealFlow"
+                    class="text-slate-700 font-medium hover:text-teal-600 focus:outline-none focus:text-teal-600"
+                    data-i18n-key="nav_deal_flow">Deal Flow (Ranking Investitori)</a>
             </nav>
 
             <div id="authStatus" class="flex items-center text-slate-700 font-medium hidden order-2 md:order-3">
-                <button id="uploadPitchButton" class="mr-2 sm:mr-4 px-3 py-2 sm:px-4 bg-teal-600 text-white rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200 flex items-center">
+                <button id="uploadPitchButton"
+                    class="mr-2 sm:mr-4 px-3 py-2 sm:px-4 bg-teal-600 text-white rounded-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200 flex items-center">
                     <span class="material-icons-outlined text-xl sm:mr-2">cloud_upload</span>
                     <span data-i18n-key="upload_pitch_button" class="hidden sm:inline">Carica Pitch</span>
                 </button>
@@ -262,13 +405,17 @@
                     <span class="material-icons-outlined profile-circle-icon">person</span>
                 </div>
                 <div class="hidden lg:flex items-center">
-                    <span data-i18n-key="welcome_message">Benvenuto</span>, <span id="userEmail" class="ml-1 font-semibold text-teal-600"></span>!
+                    <span data-i18n-key="welcome_message">Benvenuto</span>, <span id="userEmail"
+                        class="ml-1 font-semibold text-teal-600"></span>!
                 </div>
-                <select id="languageSelector" class="ml-2 sm:ml-4 px-2 py-1 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm">
+                <select id="languageSelector"
+                    class="ml-2 sm:ml-4 px-2 py-1 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm">
                     <option value="it">Italiano</option>
                     <option value="en">English</option>
                 </select>
-                <button id="logoutButton" class="ml-2 px-3 py-2 sm:px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition duration-200" data-i18n-key="logout_button">
+                <button id="logoutButton"
+                    class="ml-2 px-3 py-2 sm:px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition duration-200"
+                    data-i18n-key="logout_button">
                     Logout
                 </button>
             </div>
@@ -278,181 +425,225 @@
 
     <div id="loginSection" class="w-full max-w-md card mt-[150px] md:mt-[120px] p-8 flex flex-col items-center">
         <h2 class="text-2xl font-semibold text-slate-800 mb-6" data-i18n-key="login_title">Accedi a VALIDATR™</h2>
-        <input type="email" id="emailInput" placeholder="Email" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" data-i18n-key="email_placeholder">
-        <input type="password" id="passwordInput" placeholder="Password" class="w-full px-4 py-2 mb-6 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" data-i18n-key="password_placeholder">
-        <button id="loginButton" class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200" data-i18n-key="login_button_text">
+        <input type="email" id="emailInput" placeholder="Email"
+            class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            data-i18n-key="email_placeholder">
+        <input type="password" id="passwordInput" placeholder="Password"
+            class="w-full px-4 py-2 mb-6 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            data-i18n-key="password_placeholder">
+        <button id="loginButton"
+            class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200"
+            data-i18n-key="login_button_text">
             Accedi
         </button>
         <p id="loginError" class="text-red-600 mt-4 hidden"></p>
-        <p class="mt-4 text-slate-600" data-i18n-key="no_account_prompt">Non hai un account? 
-            <a href="#" id="showRegisterForm" class="text-teal-600 hover:text-teal-700 font-semibold" data-i18n-key="register_here_link">Registrati qui</a>
+        <p class="mt-4 text-slate-600" data-i18n-key="no_account_prompt">Non hai un account?
+            <a href="#" id="showRegisterForm" class="text-teal-600 hover:text-teal-700 font-semibold"
+                data-i18n-key="register_here_link">Registrati qui</a>
         </p>
     </div>
 
-    <div id="registerSection" class="w-full max-w-md card mt-[150px] md:mt-[120px] p-8 flex flex-col items-center hidden">
-        <h2 class="text-2xl font-semibold text-slate-800 mb-6" data-i18n-key="register_title">Registrati a VALIDATR™</h2>
-        <input type="email" id="registerEmail" placeholder="Email" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" data-i18n-key="email_placeholder">
-        <input type="password" id="registerPassword" placeholder="Password" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" data-i18n-key="password_placeholder">
-        <input type="password" id="confirmPassword" placeholder="Conferma Password" class="w-full px-4 py-2 mb-6 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" data-i18n-key="confirm_password_placeholder">
-        <button id="registerButton" class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200" data-i18n-key="register_button_text">
+    <div id="registerSection"
+        class="w-full max-w-md card mt-[150px] md:mt-[120px] p-8 flex flex-col items-center hidden">
+        <h2 class="text-2xl font-semibold text-slate-800 mb-6" data-i18n-key="register_title">Registrati a VALIDATR™
+        </h2>
+        <input type="email" id="registerEmail" placeholder="Email"
+            class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            data-i18n-key="email_placeholder">
+        <input type="password" id="registerPassword" placeholder="Password"
+            class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            data-i18n-key="password_placeholder">
+        <input type="password" id="confirmPassword" placeholder="Conferma Password"
+            class="w-full px-4 py-2 mb-6 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            data-i18n-key="confirm_password_placeholder">
+        <button id="registerButton"
+            class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200"
+            data-i18n-key="register_button_text">
             Registrati
         </button>
         <p id="registerError" class="text-red-600 mt-4 hidden"></p>
-        <p class="mt-4 text-slate-600" data-i18n-key="already_have_account_prompt">Hai già un account? 
-            <a href="#" id="showLoginForm" class="text-teal-600 hover:text-teal-700 font-semibold" data-i18n-key="login_here_link">Accedi qui</a>
+        <p class="mt-4 text-slate-600" data-i18n-key="already_have_account_prompt">Hai già un account?
+            <a href="#" id="showLoginForm" class="text-teal-600 hover:text-teal-700 font-semibold"
+                data-i18n-key="login_here_link">Accedi qui</a>
         </p>
     </div>
 
     <main id="dashboardContent" class="w-full container-padding pt-[200px] md:pt-[120px] hidden">
-        <div class="mx-auto max-w-7xl w-full"> <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="mx-auto max-w-7xl w-full">
+            <div id="loadingOverlay" class="loading-overlay hidden">
                 <div class="spinner"></div>
                 <p class="ml-4 text-slate-700 text-lg" data-i18n-key="loading_data_message">Caricamento dati...</p>
             </div>
 
             <div id="homeDashboard" class="flex flex-col w-full">
                 <header class="w-full mb-8">
-                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200 gap-4">
+                    <div
+                        class="flex flex-col md:flex-row items-start md:items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200 gap-4">
+
                         <div class="flex-grow w-full md:w-auto">
-                            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4" data-i18n-key="detailed_dashboard_title">Dashboard Analisi Dettagliata</h2>
-                            <div id="scoreModeSelector" class="flex items-center space-x-4 sm:space-x-6">
+                            <div class="flex items-center">
+                                <h2 class="text-xl sm:text-2xl font-bold text-slate-900"
+                                    data-i18n-key="detailed_dashboard_title">Dashboard Analisi Dettagliata</h2>
+                            </div>
+                            <div id="scoreModeSelector" class="flex items-center space-x-6 mt-4">
                                 <label class="flex items-center cursor-pointer">
-                                    <input type="radio" name="scoreMode" value="validatr" checked class="form-radio h-5 w-5 text-teal-600 focus:ring-teal-500">
+                                    <input type="radio" name="scoreMode" value="validatr" checked
+                                        class="form-radio h-5 w-5 text-teal-600 focus:ring-teal-500">
                                     <span class="ml-2 text-slate-700 font-medium">Score Validatr™</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer">
-                                    <input type="radio" name="scoreMode" value="custom" class="form-radio h-5 w-5 text-teal-600 focus:ring-teal-500">
+                                    <input type="radio" name="scoreMode" value="custom"
+                                        class="form-radio h-5 w-5 text-teal-600 focus:ring-teal-500">
                                     <span class="ml-2 text-slate-700 font-medium">Il Mio Score</span>
                                 </label>
                             </div>
                         </div>
+
                         <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full md:w-auto">
                             <label for="documentSelector" class="text-slate-700 font-medium whitespace-nowrap" data-i18n-key="select_pitch_deck_label">Seleziona Pitch Deck:</label>
-                            <select id="documentSelector" class="w-full sm:w-auto px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
-                            </select>
+                            
+                            <div class="relative w-full sm:w-auto">
+                                <select id="documentSelector" class="w-full sm:w-auto pl-4 pr-10 py-2 appearance-none rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+                                    </select>
+                                
+                                <button id="showSummaryBtn" title="Mostra Executive Summary" class="absolute inset-y-0 right-0 flex items-center pr-3 hidden">
+                                    <span class="material-icons-outlined text-amber-500 text-lg">star</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </header>
 
                 <section id="customWeightsSection" class="card lg:col-span-2 mb-8 hidden">
                     <h3 class="text-xl font-semibold text-slate-800 mb-2">Personalizza Pesi Variabili</h3>
-                    <p class="text-slate-600 mb-6">Trascina gli slider per aggiustare l'importanza di ogni variabile. La somma totale resterà sempre 100%. Il "Final Adjusted Score" verrà ricalcolato dinamicamente.</p>
-                    <div id="weightsSlidersContainer" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                        </div>
+                    <p class="text-slate-600 mb-6">Trascina gli slider per aggiustare l'importanza di ogni variabile. La
+                        somma totale resterà sempre 100%. Il "Final Adjusted Score" verrà ricalcolato dinamicamente.</p>
+                    <div id="weightsSlidersContainer" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4"></div>
                 </section>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
                     <section class="card lg:col-span-2">
-                        <h3 class="text-xl font-semibold text-slate-800 mb-6" data-i18n-key="general_summary_title">Riepilogo Generale del Pitch Deck</h3>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-6" data-i18n-key="general_summary_title">
+                            Riepilogo Generale del Pitch Deck</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div class="scorecard-item">
-                                <span id="finalAdjustedScoreIcon" class="score-icon score-class-default">analytics</span>
+                            <div class="scorecard-item"><span id="finalAdjustedScoreIcon"
+                                    class="score-icon score-class-default">analytics</span>
                                 <div id="finalAdjustedScoreValue" class="scorecard-value">--</div>
-                                <div class="scorecard-label" data-i18n-key="score_finale_regolato_label">Score Finale Regolato</div>
+                                <div class="scorecard-label" data-i18n-key="score_finale_regolato_label">Score Finale
+                                    Regolato</div>
                             </div>
-                            <div class="scorecard-item">
-                                <span id="coherenceIndexIcon" class="score-icon score-class-default">alt_route</span>
+                            <div class="scorecard-item"><span id="coherenceIndexIcon"
+                                    class="score-icon score-class-default">alt_route</span>
                                 <div id="coherenceIndexValue" class="scorecard-value">--</div>
-                                <div class="scorecard-label" data-i18n-key="indice_coerenza_label">Indice di Coerenza</div>
+                                <div class="scorecard-label" data-i18n-key="indice_coerenza_label">Indice di Coerenza
+                                </div>
                             </div>
-                            <div id="pitchClassCard" class="scorecard-item">
-                                <span id="pitchClassIcon" class="score-icon score-class-default">emoji_events</span>
+                            <div id="pitchClassCard" class="scorecard-item"><span id="pitchClassIcon"
+                                    class="score-icon score-class-default">emoji_events</span>
                                 <div id="pitchClassValue" class="scorecard-value">--</div>
                                 <div class="scorecard-label" data-i18n-key="classe_pitch_label">Classe Pitch</div>
                             </div>
                         </div>
-                        <div id="noCoreMetricsData" class="hidden text-center text-slate-500 mt-4" data-i18n-key="no_summary_data">Nessun dato di riepilogo disponibile per questo pitch.</div>
+                        <div id="noCoreMetricsData" class="hidden text-center text-slate-500 mt-4"
+                            data-i18n-key="no_summary_data">Nessun dato di riepilogo disponibile per questo pitch.</div>
                     </section>
-                    
                     <section class="card flex flex-col w-full">
-                        <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="variables_scores_title">Punteggi Variabili Valutate</h3>
-                        <p class="text-slate-600 mb-6" data-i18n-key="variables_chart_desc">
-                            Questo grafico a barre mostra i punteggi (0-100) assegnati a ciascuna delle 7 variabili chiave del pitch deck selezionato. Passa il mouse sulle barre per leggere la motivazione.
-                        </p>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="variables_scores_title">
+                            Punteggi Variabili Valutate</h3>
+                        <p class="text-slate-600 mb-6" data-i18n-key="variables_chart_desc">Questo grafico a barre
+                            mostra i punteggi (0-100) assegnati a ciascuna delle 7 variabili chiave del pitch deck
+                            selezionato. Passa il mouse sulle barre per leggere la motivazione.</p>
                         <div class="flex-grow flex items-center justify-center min-h-[300px]">
-                            <div class="chart-container">
-                                <canvas id="variablesChart"></canvas>
-                            </div>
+                            <div class="chart-container"><canvas id="variablesChart"></canvas></div>
                         </div>
-                        <div id="noDataChart" class="hidden text-center text-slate-500 mt-4" data-i18n-key="no_chart_data">Nessun dato disponibile per il grafico.</div>
+                        <div id="noDataChart" class="hidden text-center text-slate-500 mt-4"
+                            data-i18n-key="no_chart_data">Nessun dato disponibile per il grafico.</div>
                     </section>
-
                     <section class="card flex flex-col w-full">
-                        <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="variables_details_title">Dettaglio Variabili e Motivazioni</h3>
-                        <p class="text-slate-600 mb-6" data-i18n-key="variables_table_desc">
-                            Questa tabella fornisce i punteggi numerici e le motivazioni dettagliate per ogni variabile.
-                        </p>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="variables_details_title">
+                            Dettaglio Variabili e Motivazioni</h3>
+                        <p class="text-slate-600 mb-6" data-i18n-key="variables_table_desc">Questa tabella fornisce i
+                            punteggi numerici e le motivazioni dettagliate per ogni variabile.</p>
                         <div class="overflow-x-auto">
                             <table class="w-full min-w-[500px] bg-white rounded-lg overflow-hidden">
                                 <thead>
                                     <tr class="bg-slate-100 text-left text-slate-600 uppercase text-sm">
-                                        <th class="py-3 px-4 rounded-tl-lg" data-i18n-key="variable_header">Variabile</th>
+                                        <th class="py-3 px-4 rounded-tl-lg" data-i18n-key="variable_header">Variabile
+                                        </th>
                                         <th class="py-3 px-4" data-i18n-key="score_header">Punteggio</th>
-                                        <th class="py-3 px-4 rounded-tr-lg" data-i18n-key="motivation_header">Motivazione</th>
+                                        <th class="py-3 px-4 rounded-tr-lg" data-i18n-key="motivation_header">
+                                            Motivazione</th>
                                     </tr>
                                 </thead>
-                                <tbody id="variablesTableBody" class="divide-y divide-slate-200">
-                                </tbody>
+                                <tbody id="variablesTableBody" class="divide-y divide-slate-200"></tbody>
                             </table>
                         </div>
-                        <div id="noDataTable" class="hidden text-center text-slate-500 mt-4" data-i18n-key="no_table_data">Nessun dato disponibile per la tabella.</div>
+                        <div id="noDataTable" class="hidden text-center text-slate-500 mt-4"
+                            data-i18n-key="no_table_data">Nessun dato disponibile per la tabella.</div>
                     </section>
-
                     <section class="card lg:col-span-2 mt-8 w-full">
-                        <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="coherence_analysis_title">Analisi Coerenza tra Variabili</h3>
-                        <p class="text-slate-600 mb-6" data-i18n-key="coherence_section_desc">
-                            Questa sezione mostra la distribuzione di coerenza tra le variabili e i dettagli per ogni coppia.
-                        </p>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="coherence_analysis_title">
+                            Analisi Coerenza tra Variabili</h3>
+                        <p class="text-slate-600 mb-6" data-i18n-key="coherence_section_desc">Questa sezione mostra la
+                            distribuzione di coerenza tra le variabili e i dettagli per ogni coppia.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start w-full">
-                            <div class="doughnut-chart-container">
-                                <canvas id="coherenceDoughnutChart"></canvas>
-                            </div>
+                            <div class="doughnut-chart-container"><canvas id="coherenceDoughnutChart"></canvas></div>
                             <div>
-                                <div class="flex flex-col sm:flex-row items-start sm:items-center sm:space-x-4 mb-4 gap-2">
-                                    <label for="coherencePairSelector" class="text-slate-700 font-medium whitespace-nowrap" data-i18n-key="select_pair_label">Seleziona Coppia:</label>
-                                    <select id="coherencePairSelector" class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent w-full sm:w-auto">
-                                    </select>
+                                <div
+                                    class="flex flex-col sm:flex-row items-start sm:items-center sm:space-x-4 mb-4 gap-2">
+                                    <label for="coherencePairSelector"
+                                        class="text-slate-700 font-medium whitespace-nowrap"
+                                        data-i18n-key="select_pair_label">Seleziona Coppia:</label><select
+                                        id="coherencePairSelector"
+                                        class="px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent w-full sm:w-auto"></select>
                                 </div>
                                 <div id="coherenceDetails" class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                    <p class="text-slate-700 font-medium mb-2">
-                                        <span data-i18n-key="score_label">Punteggio:</span>
-                                        <span id="selectedCoherenceScore" class="font-bold text-slate-900 ml-1">--</span>
+                                    <p class="text-slate-700 font-medium mb-2"><span
+                                            data-i18n-key="score_label">Punteggio:</span><span
+                                            id="selectedCoherenceScore" class="font-bold text-slate-900 ml-1">--</span>
                                     </p>
-                                    <p class="text-slate-700">
-                                        <span data-i18n-key="motivation_label">Motivazione:</span>
-                                        <span id="selectedCoherenceMotivation" class="block mt-1 text-slate-800">Nessuna motivazione disponibile.</span>
-                                    </p>
+                                    <p class="text-slate-700"><span
+                                            data-i18n-key="motivation_label">Motivazione:</span><span
+                                            id="selectedCoherenceMotivation" class="block mt-1 text-slate-800">Nessuna
+                                            motivazione disponibile.</span></p>
                                 </div>
                             </div>
                         </div>
-                        <div id="noCoherenceData" class="hidden text-center text-slate-500 mt-4" data-i18n-key="no_coherence_data">Nessun dato di coerenza disponibile per questo pitch.</div>
+                        <div id="noCoherenceData" class="hidden text-center text-slate-500 mt-4"
+                            data-i18n-key="no_coherence_data">Nessun dato di coerenza disponibile per questo pitch.
+                        </div>
                     </section>
                 </div>
             </div>
 
             <div id="dealFlowDashboard" class="flex flex-col w-full hidden">
                 <header class="w-full mb-8">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200 gap-4">
-                        <h2 class="text-xl sm:text-2xl font-bold text-slate-900" data-i18n-key="deal_flow_title">Deal Flow: Ranking Pitch per Investitori</h2>
+                    <div
+                        class="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200 gap-4">
+                        <h2 class="text-xl sm:text-2xl font-bold text-slate-900" data-i18n-key="deal_flow_title">Deal
+                            Flow: Ranking Pitch per Investitori</h2>
                         <div class="flex space-x-4">
                             <label class="inline-flex items-center">
-                                <input type="radio" name="pitchFilter" value="my" checked class="form-radio text-teal-600 h-5 w-5">
-                                <span class="ml-2 text-slate-700 font-medium" data-i18n-key="my_pitches_radio">I Miei Pitch</span>
+                                <input type="radio" name="pitchFilter" value="my" checked
+                                    class="form-radio text-teal-600 h-5 w-5">
+                                <span class="ml-2 text-slate-700 font-medium" data-i18n-key="my_pitches_radio">I Miei
+                                    Pitch</span>
                             </label>
                         </div>
                     </div>
                 </header>
 
                 <section class="card w-full">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="ranking_chart_title">Classifica dei Pitch Deck (Score Finale Regolato)</h3>
-                    <p class="text-slate-600 mb-6" data-i18n-key="ranking_chart_desc">
-                        Questo grafico mostra tutti i pitch deck analizzati, ordinati in base al loro "Score Finale Regolato" in ordine decrescente. I pitch con i punteggi più alti sono in cima, rappresentando le opportunità più promettenti.
-                    </p>
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="ranking_chart_title">Classifica
+                        dei Pitch Deck (Score Finale Regolato)</h3>
+                    <p class="text-slate-600 mb-6" data-i18n-key="ranking_chart_desc">Questo grafico mostra tutti i
+                        pitch deck analizzati, ordinati in base al loro "Score Finale Regolato" in ordine decrescente. I
+                        pitch con i punteggi più alti sono in cima, rappresentando le opportunità più promettenti.</p>
                     <div class="flex-grow flex items-center justify-center min-h-[300px]">
-                        <div class="chart-container">
-                            <canvas id="rankingChart"></canvas>
-                        </div>
+                        <div class="chart-container"><canvas id="rankingChart"></canvas></div>
                     </div>
-                    <div id="noRankingData" class="hidden text-center text-slate-500 mt-4" data-i18n-key="no_ranking_data">Nessun dato di ranking disponibile.</div>
+                    <div id="noRankingData" class="hidden text-center text-slate-500 mt-4"
+                        data-i18n-key="no_ranking_data">Nessun dato di ranking disponibile.</div>
                 </section>
             </div>
         </div>
@@ -460,34 +651,57 @@
 
     <div id="uploadModal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center hidden">
         <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg mx-4">
-            
+
             <div id="uploadDefaultView">
-                <h2 class="text-2xl font-semibold text-slate-800 mb-6" data-i18n-key="upload_modal_title">Carica un Nuovo Pitch Deck</h2>
-                <p class="text-slate-600 mb-4" data-i18n-key="upload_modal_desc">Seleziona un file PDF da caricare per l'analisi.</p>
-                <input type="file" id="fileInput" accept=".pdf" class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
-                <button id="uploadFileBtn" class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200 flex items-center justify-center">
+                <h2 class="text-2xl font-semibold text-slate-800 mb-6" data-i18n-key="upload_modal_title">Carica un
+                    Nuovo Pitch Deck</h2>
+                <p class="text-slate-600 mb-4" data-i18n-key="upload_modal_desc">Seleziona un file PDF da caricare per
+                    l'analisi.</p>
+                <input type="file" id="fileInput" accept=".pdf"
+                    class="w-full px-4 py-2 mb-4 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <button id="uploadFileBtn"
+                    class="w-full px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition duration-200 flex items-center justify-center">
                     <span class="material-icons-outlined text-xl mr-2">cloud_upload</span>
                     <span data-i18n-key="upload_file_button">Carica File</span>
                 </button>
                 <p id="uploadStatusMessage" class="mt-4 text-center text-slate-700"></p>
-                <button id="closeUploadModalBtn" class="mt-6 w-full px-6 py-3 bg-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-opacity-50 transition duration-200" data-i18n-key="close_button">
+                <button id="closeUploadModalBtn"
+                    class="mt-6 w-full px-6 py-3 bg-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-opacity-50 transition duration-200"
+                    data-i18n-key="close_button">
                     Chiudi
                 </button>
             </div>
 
             <div id="uploadProcessingView" class="hidden text-center py-8">
                 <div class="spinner mx-auto mb-6"></div>
-                <h3 class="text-xl font-semibold text-slate-800" data-i18n-key="upload_processing_title">Analisi in corso...</h3>
-                <p class="text-slate-600 mt-2" data-i18n-key="upload_processing_desc">Il tuo pitch deck è in fase di analisi. La dashboard si aggiornerà automaticamente.</p>
+                <h3 class="text-xl font-semibold text-slate-800" data-i18n-key="upload_processing_title">Analisi in
+                    corso...</h3>
+                <p class="text-slate-600 mt-2" data-i18n-key="upload_processing_desc">Il tuo pitch deck è in fase di
+                    analisi. La dashboard si aggiornerà automaticamente.</p>
             </div>
 
         </div>
     </div>
-    
+
+    <div id="summaryModal" class="fixed inset-0 z-50 bg-black bg-opacity-50 grid place-items-center p-4 hidden">
+        <div class="card w-full max-w-2xl mx-auto" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-slate-800" data-i18n-key="summary_modal_title">In sintesi</h3>
+                <button id="closeSummaryModalBtn_icon" class="p-1 rounded-full hover:bg-slate-200">
+                    <span class="material-icons-outlined text-slate-600">close</span>
+                </button>
+            </div>
+            <p id="summaryModalText" class="text-slate-600 leading-relaxed max-h-80 overflow-y-auto"></p>
+            <button id="closeSummaryModalBtn_main"
+                class="mt-6 w-full sm:w-auto sm:float-right px-6 py-2 bg-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-300"
+                data-i18n-key="close_button">Chiudi</button>
+        </div>
+    </div>
+
     <script type="module">
         // Elementi UI globali
         const loginSection = document.getElementById('loginSection');
-        const registerSection = document.getElementById('registerSection'); 
+        const registerSection = document.getElementById('registerSection');
         const dashboardContent = document.getElementById('dashboardContent');
         const emailInput = document.getElementById('emailInput');
         const passwordInput = document.getElementById('passwordInput');
@@ -498,8 +712,8 @@
         const userEmailSpan = document.getElementById('userEmail');
         const navHome = document.getElementById('navHome');
         const navDealFlow = document.getElementById('navDealFlow');
-        const profileCircle = document.getElementById('profileCircle'); 
-        const uploadPitchButton = document.getElementById('uploadPitchButton'); 
+        const profileCircle = document.getElementById('profileCircle');
+        const uploadPitchButton = document.getElementById('uploadPitchButton');
 
         // Elementi del form di registrazione
         const showRegisterFormLink = document.getElementById('showRegisterForm');
@@ -528,7 +742,7 @@
         const coherencePairSelector = document.getElementById('coherencePairSelector');
         const selectedCoherenceScore = document.getElementById('selectedCoherenceScore');
         const selectedCoherenceMotivation = document.getElementById('selectedCoherenceMotivation');
-        const coherenceDoughnutChartCanvas = document.getElementById('coherenceDoughnutChart'); 
+        const coherenceDoughnutChartCanvas = document.getElementById('coherenceDoughnutChart');
 
         const noDataChartDiv = document.getElementById('noDataChart');
         const noDataTableDiv = document.getElementById('noDataTable');
@@ -550,16 +764,21 @@
         // Overlay di caricamento globale
         const loadingOverlay = document.getElementById('loadingOverlay');
 
-        let variablesChart = null; 
-        let rankingChart = null;   
-        let coherenceDoughnutChart = null; 
-        let loadedAllData = {}; 
+        let variablesChart = null;
+        let rankingChart = null;
+        let coherenceDoughnutChart = null;
+        let loadedAllData = {};
 
         const scoreModeSelector = document.getElementById('scoreModeSelector');
         const customWeightsSection = document.getElementById('customWeightsSection');
         const weightsSlidersContainer = document.getElementById('weightsSlidersContainer');
 
-        
+        const summaryModal = document.getElementById('summaryModal');
+        const showSummaryBtn = document.getElementById('showSummaryBtn');
+        const summaryModalText = document.getElementById('summaryModalText');
+        const closeSummaryModalBtn_icon = document.getElementById('closeSummaryModalBtn_icon');
+        const closeSummaryModalBtn_main = document.getElementById('closeSummaryModalBtn_main');
+
         let userWeights = {
             "Problema": 15,
             "Target": 15,
@@ -577,15 +796,15 @@
         const signInWithEmailAndPassword = window.signInWithEmailAndPassword;
         const signOut = window.signOut;
         const onAuthStateChanged = window.onAuthStateChanged;
-        const createUserWithEmailAndPassword = window.createUserWithEmailAndPassword; 
-        const db = window.firebaseDb; 
-        const setDoc = window.setDoc; 
-        const APP_ID = window.APP_ID; 
-        const docRef = window.doc; 
-        const storage = window.firebaseStorage; 
+        const createUserWithEmailAndPassword = window.createUserWithEmailAndPassword;
+        const db = window.firebaseDb;
+        const setDoc = window.setDoc;
+        const APP_ID = window.APP_ID;
+        const docRef = window.doc;
+        const storage = window.firebaseStorage;
         const storageRef = window.ref;
         const uploadBytes = window.uploadBytes;
-        const PITCH_INPUT_BUCKET = window.PITCH_INPUT_BUCKET; 
+        const PITCH_INPUT_BUCKET = window.PITCH_INPUT_BUCKET;
 
         // --- Configurazione Internazionalizzazione (i18n) ---
         const translations = {
@@ -597,6 +816,7 @@
                 welcome_message: "Benvenuto",
                 logout_button: "Logout",
                 login_title: "Accedi a VALIDATR™",
+                summary_modal_title: "In sintesi",
                 email_placeholder: "Email",
                 password_placeholder: "Password",
                 login_button_text: "Accedi",
@@ -664,14 +884,13 @@
                 no_motivation_available: "Nessuna motivazione disponibile.",
                 login_to_view_dashboard: "Accedi per visualizzare la dashboard.",
                 no_ranking_data_for_pitches: "Nessun dato di ranking disponibile per {filterType}.",
-                // NUOVE CHIAVI AGGIUNTE PER I DATI DINAMICI (basate sui nomi esatti da Firestore)
                 variable_Problema: "Problema",
                 variable_Target: "Target",
                 variable_Soluzione: "Soluzione",
                 variable_Mercato: "Mercato",
                 variable_MVP: "MVP",
                 variable_Team: "Team",
-                variable_RitornoAtteso: "Ritorno Atteso", 
+                variable_RitornoAtteso: "Ritorno Atteso",
                 class_INVESTIRE: "INVESTIRE",
                 class_MONITORARE: "MONITORARE",
                 class_VERIFICARE: "VERIFICARE",
@@ -699,6 +918,7 @@
                 register_title: "Register for VALIDATR™",
                 confirm_password_placeholder: "Confirm Password",
                 register_button_text: "Register",
+                summary_modal_title: "Executive Summary",
                 already_have_account_prompt: "Already have an account? ",
                 login_here_link: "Login here",
                 loading_data_message: "Loading data...",
@@ -765,7 +985,7 @@
                 variable_Mercato: "Market",
                 variable_MVP: "MVP",
                 variable_Team: "Team",
-                variable_RitornoAtteso: "Expected Return", 
+                variable_RitornoAtteso: "Expected Return",
                 class_INVESTIRE: "INVEST",
                 class_MONITORARE: "MONITOR",
                 class_VERIFICARE: "VERIFY",
@@ -905,6 +1125,8 @@
             coherenceIndexIcon.textContent = 'alt_route';
             pitchClassIcon.textContent = 'emoji_events';
 
+            showSummaryBtn.classList.add('hidden');
+
             pitchClassCard.classList.remove('bg-class-investire', 'bg-class-monitorare', 'bg-class-verificare', 'bg-class-pass');
             pitchClassCard.classList.add('bg-class-default-scorecard');
 
@@ -936,7 +1158,7 @@
             console.log("DEBUG: --- Inizio updateMainDashboard ---");
             console.log("DEBUG: selectedDocumentId:", selectedDocumentId);
             console.log("DEBUG: documentData (completo):", documentData); // VEDI QUI LA STRUTTURA GENERALE
-            
+
             // Controlla la sezione core_metrics
             console.log("DEBUG: documentData.core_metrics:", documentData.core_metrics);
             if (documentData.core_metrics) {
@@ -951,6 +1173,15 @@
                 console.log("DEBUG: Motivazione della prima variabile:", documentData.variables[0].motivazione_variabile);
                 console.log("DEBUG: Motivazione della prima variabile (IT):", documentData.variables[0].motivazione_variabile.it);
                 console.log("DEBUG: Motivazione della prima variabile (EN):", documentData.variables[0].motivazione_variabile.en);
+            }
+
+            console.log("Valore di executive_summary:", documentData.executive_summary);
+
+            if (documentData && documentData.executive_summary && !documentData.executive_summary.includes("non disponibile")) {
+                summaryModalText.textContent = documentData.executive_summary;
+                showSummaryBtn.classList.remove('hidden');
+            } else {
+                showSummaryBtn.classList.add('hidden');
             }
 
             // Controlla la sezione coherence_pairs
@@ -982,7 +1213,7 @@
             if (selectedMode === 'validatr') {
                 customWeightsSection.classList.add('hidden');
                 // Ripristina il valore originale dal backend
-                if(documentData && documentData.core_metrics) {
+                if (documentData && documentData.core_metrics) {
                     finalAdjustedScoreValue.textContent = documentData.core_metrics.final_adjusted_score ? documentData.core_metrics.final_adjusted_score.toFixed(2) : '--';
                 }
             } else {
@@ -1141,7 +1372,7 @@
                     scoreCell.className = 'py-3 px-4 text-center font-medium';
                     scoreCell.textContent = v.punteggio_variabile;
                     tr.appendChild(scoreCell);
-                    
+
                     const motivationCell = document.createElement('td');
                     motivationCell.className = 'py-3 px-4 text-sm';
                     motivationCell.textContent = v.motivazione_variabile[currentLanguage] || v.motivazione_variabile.it || translations[currentLanguage].no_motivation_available;
@@ -1201,7 +1432,7 @@
                     // Aggiorna gli elementi HTML con i nuovi valori
                     selectedCoherenceScore.textContent = score ?? '--';
                     selectedCoherenceMotivation.textContent = motivationText ?? 'Nessuna motivazione disponibile.';
-                    
+
                     // console.log('--- DEBUG: Update completato. Contenuto del box dettagli:', document.getElementById('coherenceDetails').innerHTML);
                 };
 
@@ -1222,7 +1453,7 @@
                 if (coherenceDoughnutChart) {
                     coherenceDoughnutChart.destroy(); // Distrugge il grafico precedente per evitare duplicati
                 }
-                
+
                 const doughnutCtx = coherenceDoughnutChartCanvas.getContext('2d');
                 coherenceDoughnutChart = new Chart(doughnutCtx, {
                     type: 'doughnut',
@@ -1273,7 +1504,7 @@
                 if (documentData && documentData.core_metrics) {
                     // Ripristina il punteggio originale
                     finalAdjustedScoreValue.textContent = documentData.core_metrics.final_adjusted_score ? documentData.core_metrics.final_adjusted_score.toFixed(2) : '--';
-                    
+
                     // --- LOGICA AGGIORNATA PER LA CLASSE PITCH ---
                     // Ripristina la classe pitch originale usando la funzione di supporto
                     updatePitchClassUI(documentData.core_metrics.classe_pitch);
@@ -1283,7 +1514,7 @@
                 initializeSliders();
                 recalculateAndDisplayMyScore();
             }
-        }    
+        }
 
         // Function to retrieve all dashboard data (Home and Deal Flow) from Cloud Function API
         async function fetchDataInBothDashboards(user) {
@@ -1321,12 +1552,12 @@
                 // Populate document selector for Home Dashboard
                 documentSelector.innerHTML = '';
                 if (Object.keys(loadedAllData).length === 0) {
-                       const option = document.createElement('option');
-                       option.value = '';
-                       option.textContent = translations[currentLanguage].no_pitch_deck_available;
-                       documentSelector.appendChild(option);
-                       documentSelector.disabled = true;
-                       clearMainDashboard();
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = translations[currentLanguage].no_pitch_deck_available;
+                    documentSelector.appendChild(option);
+                    documentSelector.disabled = true;
+                    clearMainDashboard();
                 } else {
                     documentSelector.disabled = false;
                     const sortedDocIds = Object.keys(loadedAllData).sort((a, b) => a.localeCompare(b));
@@ -1336,10 +1567,10 @@
                         option.textContent = loadedAllData[docId].document_name || docId;
                         documentSelector.appendChild(option);
                     });
-                       if (sortedDocIds.length > 0) {
-                           documentSelector.value = sortedDocIds[0];
-                           updateMainDashboard(sortedDocIds[0]);
-                       }
+                    if (sortedDocIds.length > 0) {
+                        documentSelector.value = sortedDocIds[0];
+                        updateMainDashboard(sortedDocIds[0]);
+                    }
                 }
 
             } catch (error) {
@@ -1459,7 +1690,7 @@
                             },
                             tooltip: {
                                 callbacks: {
-                                    label: function(context) {
+                                    label: function (context) {
                                         return `${context.label}: ${context.parsed.x.toFixed(2)}`;
                                     }
                                 }
@@ -1486,8 +1717,8 @@
                                     display: true,
                                     text: translations[currentLanguage].chart_pitch_deck_label,
                                     color: '#475569'
-                                    },
-                                    ticks: {
+                                },
+                                ticks: {
                                     color: '#475569'
                                 },
                                 grid: {
@@ -1514,7 +1745,7 @@
             // Definisci le classi CSS da manipolare
             const scorecardClasses = ['bg-class-investire', 'bg-class-monitorare', 'bg-class-verificare', 'bg-class-pass', 'bg-class-default-scorecard'];
             const iconClasses = ['score-class-investire', 'score-class-monitorare', 'score-class-verificare', 'score-class-pass', 'score-class-default'];
-            
+
             const lowerCaseClass = className.toLowerCase();
 
             // Aggiorna il box "Classe Pitch" (logica esistente)
@@ -1575,7 +1806,7 @@
             const sliders = document.querySelectorAll('.weight-slider');
             const total = 100;
             let currentTotal = 0;
-            
+
             // Calcola la somma attuale di tutti gli slider
             sliders.forEach(s => currentTotal += parseFloat(s.value));
 
@@ -1591,17 +1822,17 @@
                 const otherSliders = Array.from(sliders).filter(s => s.dataset.variable !== changedVarName);
                 let otherSlidersTotalWeight = 0;
                 otherSliders.forEach(s => otherSlidersTotalWeight += userWeights[s.dataset.variable]);
-                
+
                 let remainingDelta = delta;
 
                 // Distribuisci la differenza negativa
                 for (const slider of otherSliders) {
                     const varName = slider.dataset.variable;
                     if (remainingDelta === 0) break;
-                    
+
                     const proportion = userWeights[varName] / otherSlidersTotalWeight;
                     let change = remainingDelta * proportion;
-                    
+
                     let newValue = userWeights[varName] - change;
 
                     // Assicurati che il nuovo valore non vada sotto zero
@@ -1609,7 +1840,7 @@
                         change += newValue; // Riduci la modifica per non andare sotto zero
                         newValue = 0;
                     }
-                    
+
                     userWeights[varName] = newValue;
                     remainingDelta -= change;
                 }
@@ -1623,7 +1854,7 @@
             Object.keys(userWeights).forEach(key => {
                 userWeights[key] *= normalizationFactor;
             });
-            
+
             // Aggiorna la UI
             updateAllSlidersUI();
             recalculateAndDisplayMyScore();
@@ -1634,17 +1865,17 @@
          * Aggiorna la posizione e il valore testuale di tutti gli slider.
          */
         function updateAllSlidersUI() {
-             Object.keys(userWeights).forEach(varName => {
+            Object.keys(userWeights).forEach(varName => {
                 const slider = document.querySelector(`.weight-slider[data-variable="${varName}"]`);
                 const valueSpan = document.querySelector(`.slider-value[data-variable="${varName}"]`);
-                if(slider && valueSpan) {
+                if (slider && valueSpan) {
                     const weight = userWeights[varName];
                     slider.value = weight;
                     valueSpan.textContent = `${weight.toFixed(1)}%`;
                 }
             });
         }
-        
+
         /**
          * NUOVA FUNZIONE
          * Crea e popola la sezione degli slider la prima volta.
@@ -1723,6 +1954,23 @@
                     if (coherenceDoughnutChart) { coherenceDoughnutChart.destroy(); coherenceDoughnutChart = null; }
                     clearMainDashboard();
                     loadedAllData = {};
+                }
+            });
+
+            showSummaryBtn.addEventListener('click', () => {
+                summaryModal.classList.remove('hidden');
+            });
+
+            const closeSummaryModal = () => {
+                summaryModal.classList.add('hidden');
+            };
+
+            closeSummaryModalBtn_icon.addEventListener('click', closeSummaryModal);
+            closeSummaryModalBtn_main.addEventListener('click', closeSummaryModal);
+
+            summaryModal.addEventListener('click', (event) => {
+                if (event.target === summaryModal) {
+                    closeSummaryModal();
                 }
             });
 
@@ -1885,9 +2133,9 @@
                     uploadStatusMessage.style.color = '#ef4444';
                     return;
                 }
-                
-                const filePathInDefaultBucket = `validatr-pitch-decks-input-folder/user_uploads/${user.uid}/${file.name}`; 
-                const fileRef = ref(storage, filePathInDefaultBucket); 
+
+                const filePathInDefaultBucket = `validatr-pitch-decks-input-folder/user_uploads/${user.uid}/${file.name}`;
+                const fileRef = ref(storage, filePathInDefaultBucket);
 
                 // Elementi del modale
                 const defaultView = document.getElementById('uploadDefaultView');
@@ -1897,9 +2145,9 @@
                     uploadFileBtn.disabled = true;
                     uploadStatusMessage.textContent = translations[currentLanguage].upload_in_progress;
                     uploadStatusMessage.style.color = '#475569';
-                    
-                    await uploadBytes(fileRef, file, { customMetadata: { user_email: user.email } }); 
-                    
+
+                    await uploadBytes(fileRef, file, { customMetadata: { user_email: user.email } });
+
                     // L'upload è finito, ora inizia la fase di "analisi"
                     uploadStatusMessage.textContent = translations[currentLanguage].upload_success_analysis_starts;
                     uploadStatusMessage.style.color = '#10b981';
@@ -1913,7 +2161,7 @@
                     setTimeout(() => {
                         // Nascondi il modale
                         uploadModal.classList.add('hidden');
-                        
+
                         // Aggiorna i dati della dashboard
                         fetchDataInBothDashboards(user);
 
@@ -1938,4 +2186,5 @@
         });
     </script>
 </body>
+
 </html>

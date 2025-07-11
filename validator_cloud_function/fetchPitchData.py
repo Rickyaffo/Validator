@@ -62,7 +62,11 @@ def fetchPitchData(request):
             transformed_doc_data = {}
             transformed_doc_data['document_name'] = doc.id
 
-            # --- MODIFICA CRUCIALE QUI: Prioritizza 'core_metrics' e gestisci la retrocompatibilità ---
+            summary = doc_data.get('executive_summary', None)
+            if summary:
+                transformed_doc_data['executive_summary'] = summary
+
+            transformed_doc_data['document_name'] = doc_data.get('document_name', doc.id)
             if 'core_metrics' in doc_data and doc_data['core_metrics']:
                 transformed_doc_data['core_metrics'] = {
                     'indice_coerenza': doc_data['core_metrics'].get('indice_coerenza'),
