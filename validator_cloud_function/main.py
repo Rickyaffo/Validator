@@ -126,8 +126,10 @@ Per ogni variabile, valuta il punteggio (0-100) e la motivazione basandoti su qu
     for i, (var1, var2) in enumerate(COHERENCE_PAIRS):
         pair_tuple = (var1, var2)
         guideline = COHERENCE_GUIDELINES.get(pair_tuple, "Nessuna linea guida specifica.")
+        print(guideline)
         system_prompt_content += f"\n{i+1}. **{var1} - {var2}**: {guideline}"
 
+    # --- INIZIO DELLA SEZIONE CORRETTA ---
     system_prompt_content += """
 
 ---
@@ -174,20 +176,21 @@ Il formato JSON di output deve essere ESATTAMENTE come segue. Non includere alcu
     }
   ],
   "coerenza_coppie": [
-    {
-      "coppia": "Problema - Target",
+"""
+    # Costruisce dinamicamente l'esempio per tutte le 21 coppie, rendendo le istruzioni inequivocabili.
+    for i, (var1, var2) in enumerate(COHERENCE_PAIRS):
+        system_prompt_content += f"""    {{
+      "coppia": "{var1} - {var2}",
       "punteggio": 0,
-      "motivazione": { "it": "string", "en": "string" }
-    }
-  ]
-}
-```
-
----
-
-Testo del pitch deck da analizzare:
+      "motivazione": {{ "it": "string", "en": "string" }}
+    }}{',' if i < len(COHERENCE_PAIRS) - 1 else ''}
 """
 
+    system_prompt_content += """  ]
+}
+Testo del pitch deck da analizzare:
+"""
+    print(system_prompt_content)
     messages = [
         {"role": "system", "content": system_prompt_content},
         {"role": "user", "content": pitch_text}
@@ -393,12 +396,39 @@ def process_pitch_deck(cloud_event):
         all_text = all_text.replace('\n\n', '\n').strip()
         print(f"Testo estratto dal PDF (primi 500 caratteri): {all_text[:500]}...")
 
-        # Esegue l'analisi tramite l'IA
+        # --- MODIFICA ARCHITETTURALE: Generazione sommario con Gemini ---
+        executive_summary = None  # Inizializza la variabile
+        try:
+            print("INFO: Inizio della generazione del riassunto con Gemini.")
+            gemini_model = GenerativeModel("gemini-pro")
+            prompt_summary = f"""Sei un analista finanziario esperto. Il tuo compito è analizzare il testo di un pitch deck e creare un riassunto conciso.
+Basandoti sul seguente testo estratto da un pitch deck, genera un riassunto dell'idea di business in un massimo di 3 righe.
+Il riassunto deve essere chiaro, diretto e catturare l'essenza del prodotto, il problema che risolve e il suo target principale.
+
+Testo del Pitch Deck:
+---
+{all_text}
+---
+"""
+            response_summary = gemini_model.generate_content(prompt_summary)
+            executive_summary = response_summary.text
+            
+            print("--- RIASSUNTO GENERATO DA GEMINI ---")
+            print(executive_summary)
+            print("------------------------------------")
+        except Exception as e:
+            print(f"ERRORE durante la generazione del riassunto con Gemini: {e}")
+            executive_summary = "Riassunto non disponibile a causa di un errore."
+
+        # Esegue l'analisi principale tramite l'IA
         analysis_result = analyze_pitch_deck_with_gpt(all_text)
         
         if not analysis_result:
             print("Errore: L'analisi GPT non ha prodotto risultati validi.")
             return {"status": "error", "message": "Analysis failed or returned invalid data."}
+
+        # Aggiunge il sommario ai dati dell'analisi
+        analysis_result['executive_summary'] = executive_summary
 
         # Esegue i calcoli aggiuntivi e formatta i dati finali
         final_analysis = perform_additional_calculations(analysis_result)

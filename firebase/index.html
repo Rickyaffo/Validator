@@ -933,6 +933,38 @@
         function updateMainDashboard(selectedDocumentId) {
             const documentData = loadedAllData[selectedDocumentId];
 
+            console.log("DEBUG: --- Inizio updateMainDashboard ---");
+            console.log("DEBUG: selectedDocumentId:", selectedDocumentId);
+            console.log("DEBUG: documentData (completo):", documentData); // VEDI QUI LA STRUTTURA GENERALE
+            
+            // Controlla la sezione core_metrics
+            console.log("DEBUG: documentData.core_metrics:", documentData.core_metrics);
+            if (documentData.core_metrics) {
+                console.log("DEBUG: coreMetrics.final_adjusted_score:", documentData.core_metrics.final_adjusted_score);
+                console.log("DEBUG: coreMetrics.classe_pitch:", documentData.core_metrics.classe_pitch);
+            }
+
+            // Controlla la sezione variables
+            console.log("DEBUG: documentData.variables:", documentData.variables);
+            if (documentData.variables && documentData.variables.length > 0) {
+                console.log("DEBUG: Prima variabile:", documentData.variables[0]);
+                console.log("DEBUG: Motivazione della prima variabile:", documentData.variables[0].motivazione_variabile);
+                console.log("DEBUG: Motivazione della prima variabile (IT):", documentData.variables[0].motivazione_variabile.it);
+                console.log("DEBUG: Motivazione della prima variabile (EN):", documentData.variables[0].motivazione_variabile.en);
+            }
+
+            // Controlla la sezione coherence_pairs
+            console.log("DEBUG: documentData.coherence_pairs:", documentData.coherence_pairs);
+            if (documentData.coherence_pairs && documentData.coherence_pairs.length > 0) {
+                console.log("DEBUG: Prima coppia di coerenza:", documentData.coherence_pairs[0]);
+                console.log("DEBUG: Motivazione della prima coppia di coerenza:", documentData.coherence_pairs[0].motivazione_coppia);
+                console.log("DEBUG: Motivazione della prima coppia di coerenza (IT):", documentData.coherence_pairs[0].motivazione_coppia.it);
+                console.log("DEBUG: Motivazione della prima coppia di coerenza (EN):", documentData.coherence_pairs[0].motivazione_coppia.en);
+            }
+            console.log("DEBUG: currentLanguage:", currentLanguage);
+            console.log("DEBUG: --- Fine Inizio updateMainDashboard ---");
+
+
             noCoreMetricsDataDiv.classList.add('hidden');
             noDataChartDiv.classList.add('hidden');
             noDataTableDiv.classList.add('hidden');
