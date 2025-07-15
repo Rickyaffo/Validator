@@ -349,23 +349,27 @@ def get_dashboard_data(request):
     
 def generate_summary_with_openai(pitch_text):
     """
-    Usa OpenAI per generare un riassunto conciso del pitch deck.
+    Usa OpenAI per generare un riassunto conciso del pitch deck in italiano e inglese,
+    restituendo un oggetto JSON.    
     """
     try:
         print("INFO: Inizio generazione riassunto con OpenAI.")
         
-        system_prompt = "Sei un analista finanziario esperto. Genera un riassunto di un pitch deck in massimo 3 righe, catturando l'essenza del prodotto, il problema che risolve e il suo target principale."
+        system_prompt = """Sei un analista finanziario esperto. Il tuo compito è analizzare il testo di un pitch deck e creare un riassunto conciso.
+Restituisci il riassunto come un oggetto JSON con due chiavi: "it" per la versione italiana e "en" per la versione inglese.
+Ogni riassunto deve essere di massimo 3 righe e catturare l'essenza del prodotto, il problema che risolve e il suo target principale."""
         
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Basandoti su questo testo, crea il riassunto:\n\n{pitch_text}"}
+            {"role": "user", "content": f"Basandoti su questo testo, crea il riassunto bilingue in formato JSON:\n\n{pitch_text}"}
         ]
 
         response = openai.chat.completions.create(
             model="gpt-4.1-nano",
             messages=messages,
             temperature=0.1,
-            max_tokens=250  # Un numero di token sufficiente per un riassunto
+            max_tokens=400, 
+            response_format={"type": "json_object"} 
         )
 
         summary = response.choices[0].message.content

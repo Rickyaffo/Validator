@@ -1177,8 +1177,9 @@
 
             console.log("Valore di executive_summary:", documentData.executive_summary);
 
-            if (documentData && documentData.executive_summary && !documentData.executive_summary.includes("non disponibile")) {
-                summaryModalText.textContent = documentData.executive_summary;
+            if (documentData && documentData.executive_summary && typeof documentData.executive_summary === 'object') {
+                // Seleziona la traduzione corretta, con fallback sull'italiano
+                summaryModalText.textContent = documentData.executive_summary[currentLanguage] || documentData.executive_summary.it;
                 showSummaryBtn.classList.remove('hidden');
             } else {
                 showSummaryBtn.classList.add('hidden');

@@ -62,7 +62,17 @@ def fetchPitchData(request):
             transformed_doc_data = {}
             transformed_doc_data['document_name'] = doc.id
 
-            summary = doc_data.get('executive_summary', None)
+            summary = doc_data.get('executive_summary')
+
+            if summary and isinstance(summary, str):
+                try:
+                    # Tenta di convertirla in un dizionario Python
+                    summary = json.loads(summary)
+                    print(f"INFO: Sommario per {doc.id} convertito da stringa a oggetto.")
+                except json.JSONDecodeError:
+                    print(f"WARNING: executive_summary per {doc.id} non è un JSON valido.")
+                    summary = None # Scarta il sommario se non è un JSON valido
+
             if summary:
                 transformed_doc_data['executive_summary'] = summary
 
