@@ -32,6 +32,11 @@ APP_ID = os.environ.get('CANVAS_APP_ID', 'validatr-mvp')
 UID_excluded = os.environ.get("UID_excluded")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
+storage_client = storage.Client()
+
+
+FIREBASE_STORAGE_BUCKET_NAME = "validatr-mvp.firebasestorage.app" 
+
 # --- Definizione delle Rubriche di Valutazione ---
 # Contengono i criteri dettagliati per l'analisi di ogni variabile del pitch deck.
 RUBRICS = {
@@ -96,7 +101,42 @@ COHERENCE_GUIDELINES = {
     ("Team", "Ritorno Atteso"): "Elementi utili da considerare: se il team ha le abilità, esperienze e connessioni utili a raggiungere i risultati indicati."
 }
 
-def analyze_pitch_deck_with_gpt(pitch_text):
+# --- Funzione di supporto per scaricare e leggere un PDF (spostata fuori da start_analysis) ---
+def get_text_from_storage(file_path_within_bucket):
+    """
+    Scarica un PDF da Google Cloud Storage (gestito da Firebase) e ne estrae il testo.
+    Il file_path_within_bucket deve essere il percorso relativo all'interno del bucket,
+    senza il nome del bucket stesso.
+    Esempio: "validatr-pitch-decks-input-folder/user_uploads/L8u3dXQezmfvO6Qewla7u1pcbQ63/1753220266831_Sunspeker_Pitch-Deck-2025.pdf"
+    """
+    if not file_path_within_bucket:
+        return ""
+    try:
+        # Usa il bucket client globale e il nome del bucket definito globalmente
+        bucket = storage_client.bucket(FIREBASE_STORAGE_BUCKET_NAME)
+        blob = bucket.blob(file_path_within_bucket) 
+
+        # Verifica se il blob esiste prima di tentare il download
+        if not blob.exists():
+            print(f"Errore: Il blob '{file_path_within_bucket}' non esiste nel bucket '{FIREBASE_STORAGE_BUCKET_NAME}'.")
+            raise NotFound(f"Blob not found: {file_path_within_bucket}")
+
+        pdf_content = io.BytesIO(blob.download_as_bytes())
+        reader = PyPDF2.PdfReader(pdf_content)
+        text = "".join(page.extract_text() for page in reader.pages if page.extract_text())
+
+        # Elimina il file dopo averlo letto
+        blob.delete()
+        print(f"File elaborato ed eliminato: gs://{FIREBASE_STORAGE_BUCKET_NAME}/{file_path_within_bucket}")
+        return text.replace('\n\n', '\n').strip()
+    except NotFound as e: # Cattura specificamente l'errore 404 per il file
+        print(f"Errore (NotFound): {e}")
+        return ""
+    except Exception as e:
+        print(f"Attenzione: impossibile leggere il file. Errore generico: {e}")
+        return ""
+
+def analyze_pitch_deck_with_gpt(pitch_text,has_business_plan=False):
     """
     Costruisce il prompt per l'IA e chiama l'API di OpenAI per l'analisi del pitch.
     """
@@ -105,7 +145,13 @@ def analyze_pitch_deck_with_gpt(pitch_text):
 Il tuo compito è valutare l'opportunità di investimento in startup per determinare quanto è consigliato l'investimento nella startup in esame partendo dal pitch deck fornito. Identifichi 7 variabili chiave, assegnando un punteggio da 0 a 100 a ciascuna variabile basandoti sulle rubriche fornite, fornendo una motivazione dettagliata per ogni punteggio, e valutando la coerenza interna tra specifiche coppie di variabili. Restituisci tutte le informazioni in un formato JSON valido.
 
 Ricorda che dovrai valutare le informazioni ottenute in maniera analitica e critica nella prospettiva di un analista che deve discernere le migliori opportunità di investiemento. Se necessario, includi nel tuo processo di valutazione fonti esterne affidabili per verificare i claim dei pitch deck e fornire una valutazione aggiornata.
+"""
+    if has_business_plan:
+        system_prompt_content += """
+**ATTENZIONE:** Ti è stato fornito anche il testo di un Business Plan dopo il testo del Pitch Deck. Quando valuti le variabili e la loro coerenza, **dai priorità alle informazioni presenti nel Business Plan per convalidare, approfondire o, se necessario, correggere le affermazioni fatte nel Pitch Deck.** Il Business Plan dovrebbe fornire dettagli più solidi e numerici. Utilizza i dati e le proiezioni del Business Plan come base principale per i tuoi punteggi e motivazioni, soprattutto per le variabili "Mercato", "Ritorno Atteso", "MVP" e "Team" dove il Business Plan fornisce spesso maggiori evidenze. Se ci sono discrepanze significative tra i due documenti, notale nelle motivazioni.
+"""
 
+    system_prompt_content += """
 ### Rubrica per i punteggi (0-100):
 * **0-40**: Mancante o completamente irrilevante.
 * **40-55**: Presente ma estremamente debole, vago o incoerente.
@@ -200,7 +246,7 @@ Testo del pitch deck da analizzare:
         model="gpt-4.1-nano", 
         messages=messages,
         temperature=0.1,
-        max_tokens=3500,
+        max_tokens=3800,
         response_format={"type": "json_object"}
     )
 
@@ -272,80 +318,6 @@ def save_to_firestore(document_id, data, user_id=None):
     except Exception as e:
         print(f"ERRORE nel salvataggio su Firestore per il documento {document_id} (user_id: {user_id or 'N/A'}): {e}")
         return False
-
-@functions_framework.http
-def get_dashboard_data(request):
-    """
-    Funzione HTTP per recuperare i dati di analisi di un utente da BigQuery
-    e restituirli al frontend.
-    """
-    request_origin = request.headers.get('Origin')
-    headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Methods': 'GET, POST',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Max-Age': '3600'
-    }
-
-    if request_origin and ("localhost" in request_origin or "127.0.0.1" in request_origin):
-        headers['Access-Control-Allow-Origin'] = request_origin
-    else:
-        headers['Access-Control-Allow-Origin'] = 'https://validatr-mvp.web.app'
-
-    if request.method == 'OPTIONS':
-        return ('', 204, headers)
-
-    try:
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return json.dumps({"error": "Authorization header missing or invalid"}), 401, headers
-        
-        id_token = auth_header.split('Bearer ')[1]
-        decoded_token = auth.verify_id_token(id_token)
-        uid = decoded_token['uid']
-        print(f"Richiesta autenticata da UID: {uid}")
-
-        all_grouped_data = {}
-        DATASET_ID = "validatr_analyses_dataset"
-        
-        # Query per recuperare i dati aggregati dell'utente
-        query_core = f"SELECT * FROM `{PROJECT_ID}.{DATASET_ID}.calcoli_aggiuntivi_view` WHERE userId = @user_id"
-        job_config = bigquery.QueryJobConfig(query_parameters=[bigquery.ScalarQueryParameter("user_id", "STRING", uid)])
-        rows_core = bq_client.query(query_core, job_config=job_config).result()
-        
-        for row in rows_core:
-            doc_id = row.document_id
-            if doc_id not in all_grouped_data:
-                all_grouped_data[doc_id] = {"document_name": row.document_name, "core_metrics": {}, "variables": [], "coherence_pairs": []}
-            all_grouped_data[doc_id]["core_metrics"] = {
-                "classe_pitch": row.classe_pitch, "final_score": row.final_score,
-                "final_adjusted_score": row.final_adjusted_score, "z_score": row.z_score,
-                "indice_coerenza": row.indice_coerenza, "userId": row.userId
-            }
-        
-        # Query per recuperare i dettagli delle variabili
-        query_vars = f"SELECT * FROM `{PROJECT_ID}.{DATASET_ID}.valutazione_pitch_view` WHERE document_id IN (SELECT document_id FROM `{PROJECT_ID}.{DATASET_ID}.calcoli_aggiuntivi_view` WHERE userId = @user_id)"
-        rows_vars = bq_client.query(query_vars, job_config=job_config).result()
-        for row in rows_vars:
-            doc_id = row.document_id
-            if doc_id in all_grouped_data:
-                parsed_motivation = json.loads(row.motivazione_variabile) if isinstance(row.motivazione_variabile, str) else row.motivazione_variabile
-                all_grouped_data[doc_id]["variables"].append({"nome_variabile": row.nome_variabile, "punteggio_variabile": row.punteggio_variabile, "motivazione_variabile": parsed_motivation})
-        
-        # Query per recuperare i dettagli della coerenza
-        query_coh = f"SELECT * FROM `{PROJECT_ID}.{DATASET_ID}.pitch_coherence_view` WHERE document_id IN (SELECT document_id FROM `{PROJECT_ID}.{DATASET_ID}.calcoli_aggiuntivi_view` WHERE userId = @user_id)"
-        rows_coh = bq_client.query(query_coh, job_config=job_config).result()
-        for row in rows_coh:
-            doc_id = row.document_id
-            if doc_id in all_grouped_data:
-                parsed_motivation = json.loads(row.motivazione_coppia) if isinstance(row.motivazione_coppia, str) else row.motivazione_coppia
-                all_grouped_data[doc_id]["coherence_pairs"].append({"nome_coppia": row.nome_coppia, "punteggio_coppia": row.punteggio_coppia, "motivazione_coppia": parsed_motivation})
-        
-        return json.dumps(all_grouped_data), 200, headers
-
-    except Exception as e:
-        print(f"Errore nella funzione get_dashboard_data: {e}")
-        return json.dumps({"error": str(e)}), 500, headers
     
 def generate_summary_with_openai(pitch_text):
     """
@@ -381,92 +353,110 @@ Ogni riassunto deve essere di massimo 3 righe e catturare l'essenza del prodotto
         print(f"ERRORE durante la generazione del riassunto con OpenAI: {e}")
         return "Riassunto non disponibile a causa di un errore."
 
-@functions_framework.cloud_event
-def process_pitch_deck(cloud_event):
+@functions_framework.http
+def start_analysis(request):
     """
-    Funzione principale triggerata dal caricamento di un file su Cloud Storage.
-    Orchestra l'intero processo: estrazione testo, analisi, calcoli e salvataggio.
+    Funzione triggerata via HTTP che riceve i percorsi dei file,
+    unisce il loro testo e avvia l'analisi completa.
+    Utilizza l'UID dal token per identificare l'utente.
     """
+    # Gestione CORS
+    headers = {
+        'Access-Control-Allow-Origin': 'https://validatr-mvp.web.app',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '3600'
+    }
+    if request.method == 'OPTIONS':
+        return ('', 204, headers)
+
+    # --- Autenticazione ---
     try:
-        event_data = cloud_event.data
-        bucket_name = event_data["bucket"]
-        file_name = event_data["name"]
-        print(f"Triggered by file: gs://{bucket_name}/{file_name}")
+        auth_header = request.headers.get('Authorization')
+        id_token = auth_header.split('Bearer ')[1]
+        decoded_token = auth.verify_id_token(id_token, check_revoked=True)
+        # Otteniamo l'UID direttamente dal token, è il modo più sicuro
+        user_id_for_firestore = decoded_token['uid'] 
+        print(f"Analisi richiesta dall'utente autenticato: UID={user_id_for_firestore}")
+    except Exception as e:
+        print(f"ERRORE di autenticazione: {e}")
+        return json.dumps({"error": f"Unauthorized: {e}"}), 401, headers
 
-        if not file_name.lower().endswith('.pdf'):
-            print(f"Skipping non-PDF file: {file_name}.")
-            return {"status": "skipped", "message": "Not a PDF file."}
+     # --- Logga tutti i parametri ricevuti nella richiesta ---
+    print("--- Inizio Log Parametri Richiesta HTTP per start_analysis ---")
+    print(f"Metodo HTTP: {request.method}")
+    print(f"Headers della Richiesta: {request.headers}")
 
-        storage_client = storage.Client()
-        input_bucket = storage_client.bucket(bucket_name)
-        input_blob = input_bucket.blob(file_name)
-        
-        # Identifica l'utente tramite i metadati del file
-        input_blob.reload()
-        user_email_from_metadata = (input_blob.metadata or {}).get('user_email')
-        user_id_for_firestore = None
-
-        if user_email_from_metadata:
-            try:
-                user_record = auth.get_user_by_email(user_email_from_metadata)
-                user_id_for_firestore = user_record.uid
-                print(f"Associando il pitch all'utente Firebase (email): {user_email_from_metadata} (UID: {user_id_for_firestore})")
-            except auth.UserNotFoundError:
-                print(f"WARNING: Utente Firebase '{user_email_from_metadata}' non trovato.")
-            except Exception as e:
-                print(f"ERROR: Errore durante il recupero UID per '{user_email_from_metadata}': {e}.")
+    try:
+        request_json = request.get_json(silent=True)
+        if request_json:
+            print(f"Corpo JSON della Richiesta: {json.dumps(request_json, indent=2)}")
         else:
-            print("Metadato 'user_email' non presente nel blob.")
+            print("Nessun corpo JSON nella richiesta.")
+    except Exception as e:
+        print(f"Errore durante il parsing del corpo JSON: {e}")
+        print(f"Corpo raw della richiesta: {request.get_data(as_text=True)}") # Logga il corpo raw per debug
 
+    print("--- Fine Log Parametri Richiesta HTTP per start_analysis ---")
+
+    # --- Logica Principale ---
+    try:
+        request_json = request.get_json(silent=True)
+        pitch_deck_path = request_json.get('pitchDeckPath')
+        business_plan_path = request_json.get('businessPlanPath')
+        original_file_name = request_json.get('originalFileName')
+
+        if not pitch_deck_path or not original_file_name:
+            return json.dumps({"error": "Dati mancanti: pitchDeckPath o originalFileName."}), 400, headers
+        
         # Controlla se l'utente è nella lista di esclusione
         if user_id_for_firestore and user_id_for_firestore == UID_excluded:
             print(f"Utente con UID '{user_id_for_firestore}' è nella lista di esclusione. Interruzione.")
+            # È buona norma eliminare i file caricati anche se l'analisi non parte
+            # (omesso per semplicità, ma da considerare in produzione)
             return {"status": "excluded", "message": "User is on the exclusion list."}
-        
-        # Estrae il testo dal PDF
-        pdf_content = io.BytesIO(input_blob.download_as_bytes())
-        reader = PyPDF2.PdfReader(pdf_content)
-        all_text = "".join(page.extract_text() for page in reader.pages if page.extract_text())
-        all_text = all_text.replace('\n\n', '\n').strip()
-        print(f"Testo estratto dal PDF (primi 500 caratteri): {all_text[:500]}...")
 
-  
+        storage_client = storage.Client()
+        all_text = ""
+
+        has_business_plan_flag = False
+
+       
+        print(f"Tentativo di leggere Pitch Deck da path GCS: {pitch_deck_path} nel bucket {FIREBASE_STORAGE_BUCKET_NAME}")
+        all_text += get_text_from_storage(pitch_deck_path)
+        
+        # Leggi il Business Plan (opzionale)
+        if business_plan_path:
+            has_business_plan_flag = True # Setta il flag se il business plan è presente
+            print(f"Tentativo di leggere Business Plan da path GCS: {business_plan_path} nel bucket {FIREBASE_STORAGE_BUCKET_NAME}")
+            all_text += "\n\n--- CONTENUTO DEL BUSINESS PLAN ---\n\n"
+            all_text += get_text_from_storage(business_plan_path)
+
+        print(f"Testo combinato estratto (primi 500 caratteri): {all_text[:500]}...")
+
+        # 1. Genera il riassunto
         executive_summary = generate_summary_with_openai(all_text)
 
-        # Esegue l'analisi principale tramite l'IA
+        # 2. Esegui l'analisi principale
         analysis_result = analyze_pitch_deck_with_gpt(all_text)
-        
         if not analysis_result:
-            print("Errore: L'analisi GPT non ha prodotto risultati validi.")
-            return {"status": "error", "message": "Analysis failed or returned invalid data."}
-
-        # Aggiunge il sommario ai dati dell'analisi
+            raise Exception("L'analisi GPT principale non ha prodotto risultati validi.")
+        
         analysis_result['executive_summary'] = executive_summary
 
-        # Esegue i calcoli aggiuntivi e formatta i dati finali
+        # 3. Esegui i calcoli aggiuntivi
         final_analysis = perform_additional_calculations(analysis_result)
-        clean_file_name = os.path.splitext(os.path.basename(file_name))[0]
-        final_analysis['document_name'] = os.path.basename(file_name)
-
-        # Salva i risultati su Firestore
-        if not save_to_firestore(clean_file_name, final_analysis, user_id=user_id_for_firestore):
-            return {"status": "error", "message": "Failed to save analysis to Firestore."}
         
-        # Salva una copia dei risultati su un bucket di output e cancella il file di input
-        output_folder = f"user_analyses/{user_id_for_firestore}" if user_id_for_firestore else "public_analyses"
-        output_blob_name = f"{output_folder}/{clean_file_name}_analysis_result.json"
-        output_bucket_name = "validatr-pitch-decks-output"
-        output_bucket = storage_client.bucket(output_bucket_name)
-        output_blob = output_bucket.blob(output_blob_name)
+        # 4. Usa la stessa metodologia per creare l'ID del documento e il nome
+        document_id = os.path.splitext(original_file_name)[0]
+        final_analysis['document_name'] = original_file_name
 
-        output_blob.upload_from_string(json.dumps(final_analysis, indent=2), content_type='application/json')
-        print(f"Analisi completa salvata in gs://{output_bucket_name}/{output_blob_name}")
-        
-        input_blob.delete()
-        print(f"File di input {file_name} eliminato.")
+        # 5. Salva su Firestore usando l'UID del token e l'ID del documento
+        if not save_to_firestore(document_id, final_analysis, user_id=user_id_for_firestore):
+            raise Exception("Salvataggio su Firestore fallito.")
 
-        return {"status": "success", "message": "PDF processed, analysis saved."}
+        return json.dumps({"status": "success", "message": "Analysis completed and saved."}), 200, headers
 
     except Exception as e:
-        print(f"ERRORE GENERALE NON CATTURATO: {e}")
-        return {"status": "error", "message": f"An unexpected error occurred: {e}."}
+        print(f"ERRORE GENERALE in start_analysis: {e}")
+        return json.dumps({"error": f"Internal server error: {str(e)}"}), 500, headers
