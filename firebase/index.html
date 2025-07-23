@@ -624,27 +624,34 @@
                 <header class="w-full mb-8">
                     <div
                         class="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-6 rounded-xl shadow-lg border border-slate-200 gap-4">
-                        <h2 class="text-xl sm:text-2xl font-bold text-slate-900" data-i18n-key="deal_flow_title">Deal
+
+                        <h2 class="text-xl sm:text-2xl font-bold text-slate-900" data-i1e-key="deal_flow_title">Deal
                             Flow: Ranking Pitch per Investitori</h2>
-                        <div class="flex space-x-4">
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="pitchFilter" value="my" checked
-                                    class="form-radio text-teal-600 h-5 w-5">
-                                <span class="ml-2 text-slate-700 font-medium" data-i18n-key="my_pitches_radio">I Miei
-                                    Pitch</span>
-                            </label>
+
+                        <div class="flex items-center space-x-2">
+                            <label for="sectorFilter" class="text-slate-700 font-medium whitespace-nowrap"
+                                data-i18n-key="filter_by_sector_label">Filtra per Settore:</label>
+                            <select id="sectorFilter"
+                                class="w-full sm:w-auto px-4 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+                                <option value="Tutti" data-i18n-key="all_sectors_option">Tutti i Settori</option>
+                            </select>
                         </div>
+
                     </div>
                 </header>
 
                 <section class="card w-full">
                     <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="ranking_chart_title">Classifica
                         dei Pitch Deck (Score Finale Regolato)</h3>
-                    <p class="text-slate-600 mb-6" data-i18n-key="ranking_chart_desc">Questo grafico mostra tutti i
-                        pitch deck analizzati, ordinati in base al loro "Score Finale Regolato" in ordine decrescente. I
-                        pitch con i punteggi più alti sono in cima, rappresentando le opportunità più promettenti.</p>
+                    <p class="text-slate-600 mb-6" data-i18n-key="ranking_chart_desc">
+                        Questo grafico mostra tutti i pitch deck analizzati, ordinati in base al loro "Score Finale
+                        Regolato" in ordine decrescente. I pitch con i punteggi più alti sono in cima, rappresentando le
+                        opportunità più promettenti.
+                    </p>
                     <div class="flex-grow flex items-center justify-center min-h-[300px]">
-                        <div class="chart-container"><canvas id="rankingChart"></canvas></div>
+                        <div class="chart-container">
+                            <canvas id="rankingChart"></canvas>
+                        </div>
                     </div>
                     <div id="noRankingData" class="hidden text-center text-slate-500 mt-4"
                         data-i18n-key="no_ranking_data">Nessun dato di ranking disponibile.</div>
@@ -775,6 +782,7 @@
         const rankingChartCanvas = document.getElementById('rankingChart');
         const noRankingDataDiv = document.getElementById('noRankingData');
         const pitchFilterRadios = document.querySelectorAll('input[name="pitchFilter"]');
+        const sectorFilter = document.getElementById('sectorFilter');
 
         // Overlay di caricamento globale
         const loadingOverlay = document.getElementById('loadingOverlay');
@@ -821,6 +829,10 @@
         const uploadBytes = window.uploadBytes;
         const PITCH_INPUT_BUCKET = window.PITCH_INPUT_BUCKET;
 
+        const PREDEFINED_SECTORS_FRONTEND = [
+            "Pubblica Amministrazione", "Automotive", "Retail", "Finanza e Assicurazioni",
+            "Salute e Benessere", "Educazione", "Tecnologia e Software", "Industria Manifatturiera", "Altro"
+        ];
         // --- Configurazione Internazionalizzazione (i18n) ---
         const translations = {
             it: {
@@ -915,7 +927,17 @@
                 chart_pitch_deck_label: "Pitch Deck",
                 upload_processing_title: "Analisi in corso...",
                 upload_processing_desc: "Il tuo pitch deck è in fase di analisi. La dashboard si aggiornerà automaticamente.",
-                upload_success_analysis_starts: "Caricamento completato! Inizio dell'analisi..."
+                upload_success_analysis_starts: "Caricamento completato! Inizio dell'analisi...",
+                sector_public_admin: "Pubblica Amministrazione",
+                sector_automotive: "Automotive",
+                sector_retail: "Retail",
+                sector_finance_insurance: "Finanza e Assicurazioni",
+                sector_health_wellness: "Salute e Benessere",
+                sector_education: "Educazione",
+                sector_tech_software: "Tecnologia e Software",
+                sector_manufacturing: "Industria Manifatturiera",
+                sector_other: "Altro",
+                all_sectors_option: "Tutti i Settori"
             },
             en: {
                 app_title: "VALIDATR™ - Complete Dashboard",
@@ -1010,7 +1032,17 @@
                 chart_pitch_deck_label: "Pitch Deck",
                 upload_processing_title: "Analysis in progress...",
                 upload_processing_desc: "Your pitch deck is being analyzed. The dashboard will update automatically.",
-                upload_success_analysis_starts: "Upload complete! Starting analysis..."
+                upload_success_analysis_starts: "Upload complete! Starting analysis...",
+                sector_public_admin: "Public Administration",
+                sector_automotive: "Automotive",
+                sector_retail: "Retail", // O "Retail Sector" se preferisci una traduzione diversa
+                sector_finance_insurance: "Finance & Insurance",
+                sector_health_wellness: "Health & Wellness",
+                sector_education: "Education",
+                sector_tech_software: "Technology & Software",
+                sector_manufacturing: "Manufacturing Industry",
+                sector_other: "Other",
+                all_sectors_option: "All Sectors"
             }
         };
 
@@ -1532,6 +1564,120 @@
             }
         }
 
+        let allPitchData = []; // Variabile per conservare tutti i dati del pitch deck
+
+        // Funzione per caricare i dati da Firestore
+        async function loadPitchData() {
+            try {
+                // Questa query recupera TUTTE le analisi dell'utente corrente
+                // o quelle pubbliche, a seconda di come gestisci i permessi e le collezioni
+                // Per semplicità, ipotizziamo di recuperare tutte le analisi (sostituisci APP_ID e user_id_for_firestore con i tuoi valori reali)
+                const analysesRef = db.collection('artifacts').doc('validatr-mvp').collection('users').doc(firebase.auth().currentUser.uid).collection('pitch_deck_analyses');
+                const snapshot = await analysesRef.get();
+
+                allPitchData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("Dati pitch caricati:", allPitchData);
+
+                // Inizializza il grafico con tutti i dati
+                renderChart(allPitchData);
+
+                // Popola il filtro dei settori (opzionale, se non hardcoded in HTML)
+                populateSectorFilter();
+
+            } catch (error) {
+                console.error("Errore nel caricamento dei dati del pitch:", error);
+                // Gestisci l'errore nell'UI
+            }
+        }
+
+        // Funzione per popolare dinamicamente il filtro dei settori
+        function populateSectorFilter() {
+            const filterSelect = document.getElementById('sectorFilter');
+            // Assicurati che l'opzione "Tutti" sia già presente o aggiungila
+            // filterSelect.innerHTML = '<option value="Tutti">Tutti i Settori</option>'; // Se non hardcoded
+
+            PREDEFINED_SECTORS_FRONTEND.forEach(sector => {
+                if (!filterSelect.querySelector(`option[value="${sector}"]`)) { // Evita duplicati se hardcoded
+                    const option = document.createElement('option');
+                    option.value = sector;
+                    option.textContent = sector;
+                    filterSelect.appendChild(option);
+                }
+            });
+        }
+
+
+        // Funzione per applicare il filtro e aggiornare il grafico
+        function applySectorFilter() {
+            const selectedSector = document.getElementById('sectorFilter').value;
+            let filteredData = [];
+
+            if (selectedSector === "Tutti") {
+                filteredData = allPitchData;
+            } else {
+                filteredData = allPitchData.filter(pitch => pitch.settore === selectedSector);
+            }
+
+            renderChart(filteredData);
+        }
+
+        // Funzione per renderizzare il grafico (esempio con un semplice array per il grafico a barre)
+        function renderChart(dataToDisplay) {
+            const labels = dataToDisplay.map(d => d.document_name);
+            const scores = dataToDisplay.map(d => d.core_metrics.final_adjusted_score); // Assumi questa struttura
+
+            // Il tuo codice di rendering del grafico (es. Chart.js, D3.js, ApexCharts) andrebbe qui
+            // Esempio concettuale per aggiornare un elemento HTML
+            const chartContainer = document.getElementById('chartContainer');
+            chartContainer.innerHTML = ''; // Pulisci il precedente
+
+            if (labels.length > 0) {
+                // Questo è solo un esempio testuale. Dovrai integrare la tua libreria grafica qui.
+                const ul = document.createElement('ul');
+                labels.forEach((label, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = `${label}: ${scores[index].toFixed(2)}`;
+                    ul.appendChild(li);
+                });
+                chartContainer.appendChild(ul);
+
+                // Se usi Chart.js, avresti un codice simile a:
+                /*
+                const ctx = document.createElement('canvas');
+                chartContainer.appendChild(ctx);
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Score Finale Regolato',
+                            data: scores,
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                        }]
+                    },
+                    options: { /* ... le tue opzioni del grafico ... * / }
+                });
+                */
+            } else {
+                chartContainer.textContent = "Nessun pitch deck trovato per il settore selezionato.";
+            }
+        }
+
+        // Carica i dati all'avvio dell'applicazione (o dopo l'autenticazione dell'utente)
+        // Esempio: quando la pagina è caricata o l'utente è loggato
+        document.addEventListener('DOMContentLoaded', () => {
+            // Assicurati che Firebase auth sia inizializzato e l'utente loggato prima di chiamare loadPitchData()
+            // Esempio con un listener per lo stato di autenticazione di Firebase
+            firebase.auth().onAuthStateChanged(user => {
+                if (user) {
+                    loadPitchData();
+                } else {
+                    console.log("Utente non loggato. Impossibile caricare i pitch.");
+                    // Potresti reindirizzare alla pagina di login o mostrare un messaggio
+                }
+            });
+        });
+
         // Function to retrieve all dashboard data (Home and Deal Flow) from Cloud Function API
         async function fetchDataInBothDashboards(user) {
             if (!user) {
@@ -1564,6 +1710,22 @@
                 const data = await response.json();
 
                 loadedAllData = data;
+
+                const sectors = new Set();
+                for (const docId in loadedAllData) {
+                    if (loadedAllData[docId].settore) {
+                        sectors.add(loadedAllData[docId].settore);
+                    }
+                }
+                // Pulisce le opzioni vecchie, mantenendo la prima ("Tutti i settori")
+                sectorFilter.innerHTML = '<option value="Tutti" data-i18n-key="all_sectors_option">Tutti i Settori</option>';
+                sectors.forEach(sector => {
+                    const option = document.createElement('option');
+                    const translationKey = `sector_${sector.replace(/\s/g, '')}`;
+                    option.value = sector;
+                    option.textContent = translations[currentLanguage][translationKey] || sector;
+                    sectorFilter.appendChild(option);
+                });
 
                 // Populate document selector for Home Dashboard
                 documentSelector.innerHTML = '';
@@ -1600,7 +1762,10 @@
 
         // Function to render the ranking dashboard (uses already loaded data)
         async function fetchAndRenderRanking(filterType = 'my') {
+            const selectedSector = sectorFilter.value;
             const user = auth.currentUser;
+            console.log("--- DEBUG: Avvio fetchAndRenderRanking ---");
+            console.log("Settore selezionato:", selectedSector);
             if (!user) {
                 console.log("User not authenticated. Cannot retrieve ranking data.");
                 loadingOverlay.classList.add('hidden');
@@ -1617,13 +1782,19 @@
             const rankingData = [];
             for (const docId in loadedAllData) {
                 const doc = loadedAllData[docId];
-                if (doc.core_metrics && doc.core_metrics.final_adjusted_score !== undefined) {
+                const matchesSector = (selectedSector === 'Tutti' || doc.settore === selectedSector);
+                if (doc.core_metrics && doc.core_metrics.final_adjusted_score !== undefined && matchesSector) {
                     rankingData.push({
                         name: doc.document_name || docId,
-                        score: doc.core_metrics.final_adjusted_score
+                        score: doc.core_metrics.final_adjusted_score,
+                        classe_pitch: doc.core_metrics.classe_pitch,
+                        //     sector: doc.settore || 'N/D'
                     });
                 }
             }
+
+            console.log("Dati filtrati pronti per il grafico:", rankingData);
+            console.log("-------------------------------------------------");
 
             rankingData.sort((a, b) => b.score - a.score);
 
@@ -1641,46 +1812,29 @@
             const labels = rankingData.map(item => item.name);
             const scores = rankingData.map(item => item.score);
 
-            const backgroundColors = [];
-            const borderColors = [];
-            const numItems = rankingData.length;
+            const backgroundColors = rankingData.map(item => {
+                const currentClass = item.classe_pitch;
+                if (currentClass === 'INVESTIRE') return '#10b981';
+                if (currentClass === 'MONITORARE') return '#f59e0b';
+                if (currentClass === 'VERIFICARE') return '#f97316';
+                if (currentClass === 'PASS') return '#ef4444';
+                return '#cbd5e1';
+            });
 
-            for (let i = 0; i < numItems; i++) {
-                const currentClass = loadedAllData[rankingData[i].name]?.core_metrics?.classe_pitch;
-                if (currentClass === 'INVESTIRE') {
-                    backgroundColors.push('#10b981');
-                    borderColors.push('#059669');
-                } else if (currentClass === 'MONITORARE') {
-                    backgroundColors.push('#f59e0b');
-                    borderColors.push('#d97706');
-                } else if (currentClass === 'VERIFICARE') {
-                    backgroundColors.push('#f97316');
-                    borderColors.push('#ea580c');
-                } else if (currentClass === 'PASS') {
-                    backgroundColors.push('#ef4444');
-                    borderColors.push('#dc2626');
-                } else {
-                    if (i === 0) { backgroundColors.push('#34D399'); borderColors.push('#059669'); }
-                    else if (i === 1) { backgroundColors.push('#10B981'); borderColors.push('#047857'); }
-                    else if (i === 2) { backgroundColors.push('#059669'); borderColors.push('#065F46'); }
-                    else if (i >= numItems - 3 && numItems > 3) {
-                        if (i === numItems - 1) { backgroundColors.push('#B91C1C'); borderColors.push('#7F1D1D'); }
-                        else if (i === numItems - 2) { backgroundColors.push('#EF4444'); borderColors.push('#DC2626'); }
-                        else { backgroundColors.push('#F87171'); borderColors.push('#EF4444'); }
-                    } else {
-                        backgroundColors.push('#FBBF24'); borderColors.push('#F59E0B');
-                    }
-                }
-            }
-
+            const borderColors = rankingData.map(item => {
+                const currentClass = item.classe_pitch;
+                if (currentClass === 'INVESTIRE') return '#059669';
+                if (currentClass === 'MONITORARE') return '#d97706';
+                if (currentClass === 'VERIFICARE') return '#ea580c';
+                if (currentClass === 'PASS') return '#dc2626';
+                return '#94a3b8';
+            });
 
             if (rankingChart) {
                 rankingChart.data.labels = labels;
                 rankingChart.data.datasets[0].data = scores;
                 rankingChart.data.datasets[0].backgroundColor = backgroundColors;
                 rankingChart.data.datasets[0].borderColor = borderColors;
-                rankingChart.options.scales.x.title.text = translations[currentLanguage].score_finale_regolato_label + ' (0-100)';
-                rankingChart.options.scales.y.title.text = translations[currentLanguage].chart_pitch_deck_label;
                 rankingChart.update();
             } else {
                 const ctx = rankingChartCanvas.getContext('2d');
@@ -1769,8 +1923,6 @@
             pitchClassCard.classList.add(`bg-class-${lowerCaseClass}`);
             pitchClassIcon.classList.remove(...iconClasses);
             pitchClassIcon.classList.add(`score-class-${lowerCaseClass}`);
-
-            // --- NUOVO: Aggiorna le icone degli altri due box ---
 
             // 1. Aggiorna l'icona dello "Score Finale Regolato"
             finalAdjustedScoreIcon.classList.remove(...iconClasses);
@@ -2052,6 +2204,12 @@
                 }
             });
 
+            sectorFilter.addEventListener('change', () => {
+                if (auth.currentUser) {
+                    fetchAndRenderRanking();
+                }
+            });
+
             // Registration related event listeners
             showRegisterFormLink.addEventListener('click', (event) => {
                 event.preventDefault();
@@ -2133,54 +2291,54 @@
             uploadFileBtn.addEventListener('click', async () => {
                 const pitchDeckFile = document.getElementById('pitchDeckInput').files[0];
                 const businessPlanFile = document.getElementById('businessPlanInput').files[0];
-                
+
                 if (!pitchDeckFile) {
                     uploadStatusMessage.textContent = "Il Pitch Deck è obbligatorio.";
                     uploadStatusMessage.style.color = '#ef4444';
                     return;
                 }
-            
+
                 const user = auth.currentUser;
                 if (!user) {
                     uploadStatusMessage.textContent = "Devi essere loggato per caricare i file.";
                     uploadStatusMessage.style.color = '#ef4444';
                     return;
                 }
-            
+
                 const defaultView = document.getElementById('uploadDefaultView');
                 const processingView = document.getElementById('uploadProcessingView');
                 uploadFileBtn.disabled = true;
                 uploadStatusMessage.textContent = "Caricamento file in corso...";
                 uploadStatusMessage.style.color = '#475569';
-            
+
                 try {
                     const timestamp = Date.now();
                     const pitchDeckPath = `validatr-pitch-decks-input-folder/user_uploads/${user.uid}/${timestamp}_${pitchDeckFile.name}`;
                     let businessPlanPath = null;
-            
+
                     const uploadPromises = [];
-            
+
                     // Prepara il caricamento del Pitch Deck
                     const pitchDeckRef = ref(storage, pitchDeckPath);
                     uploadPromises.push(uploadBytes(pitchDeckRef, pitchDeckFile));
-            
+
                     // Prepara il caricamento del Business Plan, se presente
                     if (businessPlanFile) {
                         businessPlanPath = `validatr-pitch-decks-input-folder/user_uploads/${user.uid}/${timestamp}_${businessPlanFile.name}`;
                         const businessPlanRef = ref(storage, businessPlanPath);
                         uploadPromises.push(uploadBytes(businessPlanRef, businessPlanFile));
                     }
-            
+
                     // Aspetta che tutti i caricamenti siano completati
                     await Promise.all(uploadPromises);
                     console.log("Tutti i file sono stati caricati con successo.");
                     uploadStatusMessage.textContent = "File caricati. Avvio dell'analisi...";
-            
+
                     // Ora chiama la nuova Cloud Function HTTP per iniziare l'analisi
                     const token = await user.getIdToken();
-                    
-                    const apiUrl = `https://process-pitch-deck-hjttc4pjcq-ew.a.run.app`; 
-            
+
+                    const apiUrl = `https://process-pitch-deck-hjttc4pjcq-ew.a.run.app`;
+
                     const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: {
@@ -2193,18 +2351,18 @@
                             originalFileName: pitchDeckFile.name // Usiamo il nome del pitch come nome del documento
                         })
                     });
-            
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.error || 'Errore durante l_avvio dell_analisi.');
                     }
-                    
+
                     console.log("Analisi avviata con successo dal backend.");
-                    
+
                     // Mostra la vista di elaborazione e imposta il timer
                     defaultView.classList.add('hidden');
                     processingView.classList.remove('hidden');
-            
+
                     setTimeout(() => {
                         uploadModal.classList.add('hidden');
                         fetchDataInBothDashboards(user); // Ricarica i dati
@@ -2218,7 +2376,7 @@
                             uploadFileBtn.disabled = false;
                         }, 500);
                     }, 15000);
-            
+
                 } catch (error) {
                     console.error("Errore nel processo di upload e analisi:", error);
                     uploadStatusMessage.textContent = `Errore: ${error.message}`;

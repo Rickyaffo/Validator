@@ -105,6 +105,9 @@ def fetchPitchData(request):
 
             # --- Gestione di 'variabili_valutate' ---
             transformed_doc_data['variables'] = []
+            transformed_doc_data['settore'] = doc_data.get('settore')
+            print(f"DEBUG: Documento '{doc.id}', Settore: {transformed_doc_data['settore']}")
+            # --- FINE AGGIUNTA CAMPO 'settore' ---
             if 'variabili_valutate' in doc_data and doc_data['variabili_valutate']:
                 for var in doc_data['variabili_valutate']:
                     motivation = var.get('motivazione')

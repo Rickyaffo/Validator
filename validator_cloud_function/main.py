@@ -37,6 +37,18 @@ storage_client = storage.Client()
 
 FIREBASE_STORAGE_BUCKET_NAME = "validatr-mvp.firebasestorage.app" 
 
+PREDEFINED_SECTORS = [
+    "Pubblica Amministrazione",
+    "Automotive",
+    "Retail",
+    "Finanza e Assicurazioni",
+    "Salute e Benessere",
+    "Educazione",
+    "Tecnologia e Software",
+    "Industria Manifatturiera",
+    "Altro" # Aggiungi "Altro" come fallback se nessuno degli altri si adatta perfettamente
+]
+
 # --- Definizione delle Rubriche di Valutazione ---
 # Contengono i criteri dettagliati per l'analisi di ogni variabile del pitch deck.
 RUBRICS = {
@@ -139,6 +151,8 @@ def get_text_from_storage(file_path_within_bucket):
 def analyze_pitch_deck_with_gpt(pitch_text,has_business_plan=False):
     """
     Costruisce il prompt per l'IA e chiama l'API di OpenAI per l'analisi del pitch.
+    Include istruzioni per convalidare le variabili con il business plan, se presente,
+    e per identificare il settore.
     """
     system_prompt_content = """Sei un analista esperto nell'analisi e valutazione di pitch deck per startup con background nei principali fondi di investimento per startup come Sequoia Capital, Andreessen Horowitz, P101, 360 capital, Google Ventures, LVenture Group, Y Combinator e CDP Venture Capital SGR di cui utilizzi best practice e approccio.
 
@@ -146,6 +160,7 @@ Il tuo compito è valutare l'opportunità di investimento in startup per determi
 
 Ricorda che dovrai valutare le informazioni ottenute in maniera analitica e critica nella prospettiva di un analista che deve discernere le migliori opportunità di investiemento. Se necessario, includi nel tuo processo di valutazione fonti esterne affidabili per verificare i claim dei pitch deck e fornire una valutazione aggiornata.
 """
+
     if has_business_plan:
         system_prompt_content += """
 **ATTENZIONE:** Ti è stato fornito anche il testo di un Business Plan dopo il testo del Pitch Deck. Quando valuti le variabili e la loro coerenza, **dai priorità alle informazioni presenti nel Business Plan per convalidare, approfondire o, se necessario, correggere le affermazioni fatte nel Pitch Deck.** Il Business Plan dovrebbe fornire dettagli più solidi e numerici. Utilizza i dati e le proiezioni del Business Plan come base principale per i tuoi punteggi e motivazioni, soprattutto per le variabili "Mercato", "Ritorno Atteso", "MVP" e "Team" dove il Business Plan fornisce spesso maggiori evidenze. Se ci sono discrepanze significative tra i due documenti, notale nelle motivazioni.
@@ -167,23 +182,35 @@ Per ogni variabile, valuta il punteggio (0-100) e la motivazione basandoti su qu
     for var, details in RUBRICS.items():
         system_prompt_content += f"\n* **{var}**: {details['criteri']}"
 
-    system_prompt_content += "\n\n---\n\n### Criteri di Valutazione della Coerenza (0-100)\nValuta la coerenza (0-100) delle seguenti coppie di variabili. Un punteggio di 100 indica perfetta coerenza.\n"
+    # --- NUOVA ISTRUZIONE PER L'IA: Identificazione del Settore ---
+    system_prompt_content += f"""
+
+---
+
+### Identificazione del Settore
+Basandoti sul contenuto del pitch deck (e del business plan, se presente), identifica il settore di appartenenza della startup. Devi scegliere **UNO SOLO** tra i seguenti settori predefiniti. Se la startup non rientra chiaramente in nessuno di questi, scegli "Altro".
+Settori disponibili: {', '.join(PREDEFINED_SECTORS)}
+
+---
+
+### Criteri di Valutazione della Coerenza (0-100)
+Valuta la coerenza (0-100) delle seguenti coppie di variabili. Un punteggio di 100 indica perfetta coerenza.
+"""
 
     for i, (var1, var2) in enumerate(COHERENCE_PAIRS):
         pair_tuple = (var1, var2)
         guideline = COHERENCE_GUIDELINES.get(pair_tuple, "Nessuna linea guida specifica.")
-        print(guideline)
         system_prompt_content += f"\n{i+1}. **{var1} - {var2}**: {guideline}"
 
-    # --- INIZIO DELLA SEZIONE CORRETTA ---
+    # --- AGGIORNAMENTO DEL FORMATO DI OUTPUT JSON ---
     system_prompt_content += """
-
 ---
 
 ### Formato di Output (JSON)
 Il formato JSON di output deve essere ESATTAMENTE come segue. Non includere alcun testo aggiuntivo prima o dopo il blocco JSON.
 ```json
 {
+  "settore": "string",  // Nuovo campo per il settore
   "variabili_valutate": [
     {
       "nome": "Problema",
@@ -223,7 +250,6 @@ Il formato JSON di output deve essere ESATTAMENTE come segue. Non includere alcu
   ],
   "coerenza_coppie": [
 """
-    # Costruisce dinamicamente l'esempio per tutte le 21 coppie, rendendo le istruzioni inequivocabili.
     for i, (var1, var2) in enumerate(COHERENCE_PAIRS):
         system_prompt_content += f"""    {{
       "coppia": "{var1} - {var2}",
@@ -234,6 +260,7 @@ Il formato JSON di output deve essere ESATTAMENTE come segue. Non includere alcu
 
     system_prompt_content += """  ]
 }
+
 Testo del pitch deck da analizzare:
 """
     print(system_prompt_content)
@@ -255,6 +282,10 @@ Testo del pitch deck da analizzare:
 
     try:
         parsed_response = json.loads(gpt_response_content)
+        # Validazione del settore: assicurati che sia uno dei predefiniti
+        if parsed_response.get("settore") not in PREDEFINED_SECTORS:
+            print(f"ATTENZIONE: Settore '{parsed_response.get('settore')}' non riconosciuto. Assegnando 'Altro'.")
+            parsed_response["settore"] = "Altro"
         return parsed_response
     except json.JSONDecodeError as e:
         print(f"Errore nel parsing JSON della risposta GPT: {e}")
