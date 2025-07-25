@@ -489,12 +489,14 @@
                                 <label class="flex items-center cursor-pointer">
                                     <input type="radio" name="scoreMode" value="validatr" checked
                                         class="form-radio h-5 w-5 text-teal-600 focus:ring-teal-500">
-                                    <span class="ml-2 text-slate-700 font-medium">Score Validatr™</span>
+                                    <span class="ml-2 text-slate-700 font-medium" data-i18n-key="score_validatr">Score
+                                        Validatr™</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer">
                                     <input type="radio" name="scoreMode" value="custom"
                                         class="form-radio h-5 w-5 text-teal-600 focus:ring-teal-500">
-                                    <span class="ml-2 text-slate-700 font-medium">Il Mio Score</span>
+                                    <span class="ml-2 text-slate-700 font-medium" data-i18n-key="my_score">Il Mio
+                                        Score</span>
                                 </label>
                             </div>
                         </div>
@@ -519,9 +521,9 @@
                 </header>
 
                 <section id="customWeightsSection" class="card lg:col-span-2 mb-8 hidden">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-2">Personalizza Pesi Variabili</h3>
-                    <p class="text-slate-600 mb-6">Trascina gli slider per aggiustare l'importanza di ogni variabile. La
-                        somma totale resterà sempre 100%. Il "Final Adjusted Score" verrà ricalcolato dinamicamente.</p>
+                    <h3 class="text-xl font-semibold text-slate-800 mb-2" data-i18n-key="customize_weights_title">
+                        Personalizza Pesi Variabili</h3>
+                    <p class="text-slate-600 mb-6" data-i18n-key="customize_weights_desc"></p>
                     <div id="weightsSlidersContainer" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4"></div>
                 </section>
 
@@ -643,11 +645,7 @@
                 <section class="card w-full">
                     <h3 class="text-xl font-semibold text-slate-800 mb-4" data-i18n-key="ranking_chart_title">Classifica
                         dei Pitch Deck (Score Finale Regolato)</h3>
-                    <p class="text-slate-600 mb-6" data-i18n-key="ranking_chart_desc">
-                        Questo grafico mostra tutti i pitch deck analizzati, ordinati in base al loro "Score Finale
-                        Regolato" in ordine decrescente. I pitch con i punteggi più alti sono in cima, rappresentando le
-                        opportunità più promettenti.
-                    </p>
+                    <p class="text-slate-600 mb-6" data-i18n-key="ranking_chart_desc"></p>
                     <div class="flex-grow flex items-center justify-center min-h-[300px]">
                         <div class="chart-container">
                             <canvas id="rankingChart"></canvas>
@@ -881,9 +879,10 @@
                 ranking_chart_title: "Classifica dei Pitch Deck (Score Finale Regolato)",
                 ranking_chart_desc: "Questo grafico mostra tutti i pitch deck analizzati, ordinati in base al loro \"Score Finale Regolato\" in ordine decrescente. I pitch con i punteggi più alti sono in cima, rappresentando le opportunità più promettenti.",
                 no_ranking_data: "Nessun dato di ranking disponibile.",
-                upload_modal_title: "Carica un Nuovo Pitch Deck",
-                upload_modal_desc: "Seleziona un file PDF da caricare per l'analisi.",
-                upload_file_button: "Carica File",
+                upload_modal_title: "Carica Documenti per l'Analisi", // AGGIORNATO
+                pitch_deck_label: "Pitch Deck (PDF, obbligatorio)", // NUOVO
+                business_plan_label: "Business Plan (PDF, opzionale)", // NUOVO
+                upload_and_analyze_button: "Carica e Analizza", // AGGIORNATO
                 close_button: "Chiudi",
                 upload_select_file: "Seleziona un file PDF.",
                 upload_must_be_pdf: "Il file deve essere un PDF.",
@@ -901,7 +900,7 @@
                 login_too_many_requests: "Troppi tentativi di accesso falliti. Riprova più tardi.",
                 error_prefix: "Errore",
                 logout_error_prefix: "Errore durante il logout",
-                register_missing_fields: "Per favore, compila tutti i campi.",
+                register_missing_fields: "Per favor, compila tutti i campi.", // Corretto "Per favor" -> "Per favore"
                 register_password_too_short: "La password deve essere lunga almeno 6 caratteri.",
                 register_passwords_not_match: "Le password non corrispondono.",
                 register_generic_error: "Errore durante la registrazione. Riprova.",
@@ -937,7 +936,13 @@
                 sector_tech_software: "Tecnologia e Software",
                 sector_manufacturing: "Industria Manifatturiera",
                 sector_other: "Altro",
-                all_sectors_option: "Tutti i Settori"
+                all_sectors_option: "Tutti i Settori",
+                customize_weights_title: "Personalizza Pesi Variabili",
+                customize_weights_desc: "Trascina gli slider per aggiustare l'importanza di ogni variabile. La somma totale resterà sempre 100%. Il \"Final Adjusted Score\" verrà ricalcolato dinamicamente.",
+                ranking_chart_desc: "Questo grafico mostra tutti i pitch deck analizzati, ordinati in base al loro \"Score Finale Regolato\" in ordine decrescente. I pitch con i punteggi più alti sono in cima, rappresentando le opportunità più promettenti.",
+                score_validatr: "Score Validatr™",
+                filter_by_sector_label: "Filtra per Settore:",
+                my_score: "Il Mio Score"
             },
             en: {
                 app_title: "VALIDATR™ - Complete Dashboard",
@@ -985,9 +990,10 @@
                 ranking_chart_title: "Pitch Deck Ranking (Final Adjusted Score)",
                 ranking_chart_desc: "This chart displays all analyzed pitch decks, ordered by their \"Final Adjusted Score\" in descending order. Pitches with higher scores are at the top, representing the most promising opportunities.",
                 no_ranking_data: "No ranking data available.",
-                upload_modal_title: "Upload New Pitch Deck",
-                upload_modal_desc: "Select a PDF file to upload for analysis.",
-                upload_file_button: "Upload File",
+                upload_modal_title: "Upload Documents for Analysis", // AGGIORNATO
+                pitch_deck_label: "Pitch Deck (PDF, required)", // NUOVO
+                business_plan_label: "Business Plan (PDF, optional)", // NUOVO
+                upload_and_analyze_button: "Upload and Analyze", // AGGIORNATO
                 close_button: "Close",
                 upload_select_file: "Select a PDF file.",
                 upload_must_be_pdf: "The file must be a PDF.",
@@ -1015,7 +1021,6 @@
                 no_motivation_available: "No motivation available.",
                 login_to_view_dashboard: "Please log in to view the dashboard.",
                 no_ranking_data_for_pitches: "No ranking data available for {filterType}.",
-                // NUOVE CHIAVI AGGIUNTE PER I DATI DINAMICI
                 variable_Problema: "Problem",
                 variable_Target: "Target",
                 variable_Soluzione: "Solution",
@@ -1042,7 +1047,13 @@
                 sector_tech_software: "Technology & Software",
                 sector_manufacturing: "Manufacturing Industry",
                 sector_other: "Other",
-                all_sectors_option: "All Sectors"
+                all_sectors_option: "All Sectors",
+                customize_weights_title: "Customize Variable Weights",
+                customize_weights_desc: "Drag the sliders to adjust the importance of each variable. The total sum will always remain 100%. The \"Final Adjusted Score\" will be recalculated dynamically.",
+                ranking_chart_desc: "This chart displays all analyzed pitch decks, ordered by their \"Final Adjusted Score\" in descending order. Pitches with higher scores are at the top, representing the most promising opportunities.",
+                score_validatr: "Validatr™ Score",
+                filter_by_sector_label: "Filter by Sector:",
+                my_score: "My Score"
             }
         };
 
@@ -1592,34 +1603,38 @@
 
         // Funzione per popolare dinamicamente il filtro dei settori
         function populateSectorFilter() {
-            const filterSelect = document.getElementById('sectorFilter');
-            // Assicurati che l'opzione "Tutti" sia già presente o aggiungila
-            // filterSelect.innerHTML = '<option value="Tutti">Tutti i Settori</option>'; // Se non hardcoded
+            const sectorFilter = document.getElementById('sectorFilter');
+            if (!sectorFilter) return; // Aggiungi un controllo per assicurarti che l'elemento esista
 
-            PREDEFINED_SECTORS_FRONTEND.forEach(sector => {
-                if (!filterSelect.querySelector(`option[value="${sector}"]`)) { // Evita duplicati se hardcoded
-                    const option = document.createElement('option');
-                    option.value = sector;
-                    option.textContent = sector;
-                    filterSelect.appendChild(option);
-                }
+            // Pulisce le opzioni vecchie, mantenendo la prima ("Tutti i settori")
+            // IMPORTANTE: la prima opzione "Tutti i Settori" deve avere data-i18n-key="all_sectors_option" nell'HTML!
+            sectorFilter.innerHTML = '<option value="Tutti" data-i18n-key="all_sectors_option"></option>';
+            // La sua traduzione verrà aggiornata dalla applyTranslations generale,
+            // ma per essere sicuri che il testo iniziale sia corretto, lo aggiorniamo qui se serve.
+            sectorFilter.querySelector('option[value="Tutti"]').textContent = translations[currentLanguage].all_sectors_option;
+
+            PREDEFINED_SECTORS_FRONTEND.forEach(sector => { // Usa la lista globale
+                const option = document.createElement('option');
+                // Crea la chiave di traduzione. Rimuovi spazi e caratteri speciali per la chiave.
+                // Ad esempio "Pubblica Amministrazione" -> "sector_PubblicaAmministrazione"
+                const translationKey = `sector_${sector.replace(/\s/g, '').replace(/&/g, 'e').replace(/[^\w]/g, '')}`;
+
+                option.value = sector; // Il valore effettivo per il filtro (la stringa italiana canonica)
+                // Imposta il testo visualizzato usando la traduzione corrente
+                option.textContent = translations[currentLanguage][translationKey] || sector;
+
+                // Aggiungi l'attributo data-i18n-key all'opzione dinamica
+                // Questo è il modo corretto per farla funzionare con il sistema generale di traduzione,
+                // anche se la ri-popoleremo esplicitamente qui al cambio lingua.
+                option.setAttribute('data-i18n-key', translationKey);
+
+                sectorFilter.appendChild(option);
             });
+            console.log("Filtro settore ri-popolato per lingua:", currentLanguage);
         }
 
 
-        // Funzione per applicare il filtro e aggiornare il grafico
-        function applySectorFilter() {
-            const selectedSector = document.getElementById('sectorFilter').value;
-            let filteredData = [];
-
-            if (selectedSector === "Tutti") {
-                filteredData = allPitchData;
-            } else {
-                filteredData = allPitchData.filter(pitch => pitch.settore === selectedSector);
-            }
-
-            renderChart(filteredData);
-        }
+       
 
         // Funzione per renderizzare il grafico (esempio con un semplice array per il grafico a barre)
         function renderChart(dataToDisplay) {
