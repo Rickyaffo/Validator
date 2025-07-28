@@ -756,7 +756,7 @@
         const dealFlowDashboard = document.getElementById('dealFlowDashboard');
 
         // Elementi della dashboard Home
-   //     const documentSelector = document.getElementById('documentSelector');
+        //     const documentSelector = document.getElementById('documentSelector');
         const variablesTableBody = document.getElementById('variablesTableBody');
         const variablesChartCanvas = document.getElementById('variablesChart');
         const coherencePairSelector = document.getElementById('coherencePairSelector');
@@ -780,7 +780,7 @@
         const rankingChartCanvas = document.getElementById('rankingChart');
         const noRankingDataDiv = document.getElementById('noRankingData');
         const pitchFilterRadios = document.querySelectorAll('input[name="pitchFilter"]');
-  //      const sectorFilter = document.getElementById('sectorFilter');
+        //      const sectorFilter = document.getElementById('sectorFilter');
 
         // Overlay di caricamento globale
         const loadingOverlay = document.getElementById('loadingOverlay');
@@ -927,15 +927,15 @@
                 upload_processing_title: "Analisi in corso...",
                 upload_processing_desc: "Il tuo pitch deck è in fase di analisi. La dashboard si aggiornerà automaticamente.",
                 upload_success_analysis_starts: "Caricamento completato! Inizio dell'analisi...",
-                sector_PubblicaAmministrazione: "Pubblica Amministrazione",
-                sector_Automotive: "Automotive",
-                sector_Retail: "Retail",
-                sector_FinanzaeAssicurazioni: "Finanza e Assicurazioni", // NOTA IL "e" al posto di "&"
-                sector_SaluteeBenessere: "Salute e Benessere", // NOTA IL "e" al posto di "&"
-                sector_Educazione: "Educazione",
-                sector_TecnologiaeSoftware: "Tecnologia e Software", // NOTA IL "e" al posto di "&"
-                sector_IndustriaManifatturiera: "Industria Manifatturiera",
-                sector_Altro: "Altro",
+                sector_public_administration: "Pubblica Amministrazione",
+                sector_automotive: "Automotive",
+                sector_retail: "Retail",
+                sector_finance_insurance: "Finanza e Assicurazioni",
+                sector_health_wellness: "Salute e Benessere",
+                sector_education: "Educazione",
+                sector_technology_software: "Tecnologia e Software",
+                sector_manufacturing_industry: "Industria Manifatturiera",
+                sector_other: "Altro",
                 all_sectors_option: "Tutti i Settori",
                 customize_weights_title: "Personalizza Pesi Variabili",
                 customize_weights_desc: "Trascina gli slider per aggiustare l'importanza di ogni variabile. La somma totale resterà sempre 100%. Il \"Final Adjusted Score\" verrà ricalcolato dinamicamente.",
@@ -1038,23 +1038,36 @@
                 upload_processing_title: "Analysis in progress...",
                 upload_processing_desc: "Your pitch deck is being analyzed. The dashboard will update automatically.",
                 upload_success_analysis_starts: "Upload complete! Starting analysis...",
-                sector_PublicAdministration: "Public Administration",
-                sector_Automotive: "Automotive",
-                sector_Retail: "Retail",
-                sector_FinanceInsurance: "Finance & Insurance",
-                sector_HealthWellness: "Health & Wellness",
-                sector_Education: "Education",
-                sector_TechnologySoftware: "Technology & Software",
-                sector_ManufacturingIndustry: "Manufacturing Industry",
-                sector_Other: "Other",
-                all_sectors_option: "All Sectors",
+                sector_public_administration: "Public Administration",
+                sector_automotive: "Automotive",
+                sector_retail: "Retail",
+                sector_finance_insurance: "Finance & Insurance",
+                sector_health_wellness: "Health & Wellness",
+                sector_education: "Education",
+                sector_technology_software: "Technology & Software",
+                sector_manufacturing_industry: "Manufacturing Industry",
+                sector_other: "Other",
                 customize_weights_title: "Customize Variable Weights",
                 customize_weights_desc: "Drag the sliders to adjust the importance of each variable. The total sum will always remain 100%. The \"Final Adjusted Score\" will be recalculated dynamically.",
                 ranking_chart_desc: "This chart displays all analyzed pitch decks, ordered by their \"Final Adjusted Score\" in descending order. Pitches with higher scores are at the top, representing the most promising opportunities.",
                 score_validatr: "Validatr™ Score",
+                all_sectors_option: "All Sectors",
                 filter_by_sector_label: "Filter by Sector:",
                 my_score: "My Score"
             }
+        };
+
+        // Mappa per collegare il nome del settore ricevuto dal backend alla chiave di traduzione unificata
+        const sectorToKeyMap = {
+            "Pubblica Amministrazione": "sector_public_administration",
+            "Automotive": "sector_automotive",
+            "Retail": "sector_retail",
+            "Finanza e Assicurazioni": "sector_finance_insurance",
+            "Salute e Benessere": "sector_health_wellness",
+            "Educazione": "sector_education",
+            "Tecnologia e Software": "sector_technology_software",
+            "Industria Manifatturiera": "sector_manufacturing_industry",
+            "Altro": "sector_other"
         };
 
         let currentLanguage = 'it'; // Default language
@@ -1101,7 +1114,7 @@
             if (localNoCoherenceDataDiv) localNoCoherenceDataDiv.textContent = translations[currentLanguage].no_coherence_data;
             if (localNoRankingDataDiv) localNoRankingDataDiv.textContent = translations[currentLanguage].no_ranking_data;
 
-            
+
             const currentUniqueSectors = new Set();
             for (const docId in loadedAllData) {
                 if (loadedAllData[docId].settore) {
@@ -1647,23 +1660,43 @@
 
         // Funzione per popolare dinamicamente il filtro dei settori
         function populateSectorFilter(sectorsArray) {
-             const localSectorFilter = document.getElementById('sectorFilter');
+            const localSectorFilter = document.getElementById('sectorFilter');
             if (!localSectorFilter) return;
+
+            const currentSelectedValue = localSectorFilter.value;
 
             localSectorFilter.innerHTML = '<option value="Tutti" data-i18n-key="all_sectors_option"></option>';
             localSectorFilter.querySelector('option[value="Tutti"]').textContent = translations[currentLanguage].all_sectors_option;
 
             const sortedSectors = [...new Set(sectorsArray)].sort();
 
-            sortedSectors.forEach(sector => {
-                const option = document.createElement('option');
-                const translationKey = `sector_${sector.replace(/\s/g, '').replace(/&/g, 'e').replace(/[^\w]/g, '')}`;
+            sortedSectors.forEach(sectorName => {
+                // 1. Trova la chiave di traduzione unificata usando la mappa
+                const translationKey = sectorToKeyMap[sectorName];
 
-                option.value = sector;
-                option.textContent = translations[currentLanguage][translationKey] || sector;
+                // Se non trova una chiave, va avanti per non creare opzioni rotte
+                if (!translationKey) {
+                    console.warn(`Nessuna chiave di traduzione trovata per il settore: ${sectorName}`);
+                    return;
+                }
+
+                const option = document.createElement('option');
+
+                // 2. Usa il nome del settore ricevuto come "value"
+                option.value = sectorName;
+
+                // 3. Applica la traduzione usando la chiave unificata
+                option.textContent = translations[currentLanguage][translationKey] || sectorName; // Fallback sul nome originale
+
+                // 4. Imposta l'attributo data-i18n-key con la chiave corretta
                 option.setAttribute('data-i18n-key', translationKey);
+
                 localSectorFilter.appendChild(option);
             });
+
+            // Ripristina la selezione precedente, se ancora valida
+            localSectorFilter.value = currentSelectedValue;
+
             console.log("Filtro settore ri-popolato per lingua:", currentLanguage);
         }
 
