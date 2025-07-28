@@ -756,7 +756,7 @@
         const dealFlowDashboard = document.getElementById('dealFlowDashboard');
 
         // Elementi della dashboard Home
-        const documentSelector = document.getElementById('documentSelector');
+   //     const documentSelector = document.getElementById('documentSelector');
         const variablesTableBody = document.getElementById('variablesTableBody');
         const variablesChartCanvas = document.getElementById('variablesChart');
         const coherencePairSelector = document.getElementById('coherencePairSelector');
@@ -780,7 +780,7 @@
         const rankingChartCanvas = document.getElementById('rankingChart');
         const noRankingDataDiv = document.getElementById('noRankingData');
         const pitchFilterRadios = document.querySelectorAll('input[name="pitchFilter"]');
-        const sectorFilter = document.getElementById('sectorFilter');
+  //      const sectorFilter = document.getElementById('sectorFilter');
 
         // Overlay di caricamento globale
         const loadingOverlay = document.getElementById('loadingOverlay');
@@ -927,15 +927,15 @@
                 upload_processing_title: "Analisi in corso...",
                 upload_processing_desc: "Il tuo pitch deck è in fase di analisi. La dashboard si aggiornerà automaticamente.",
                 upload_success_analysis_starts: "Caricamento completato! Inizio dell'analisi...",
-                sector_public_admin: "Pubblica Amministrazione",
-                sector_automotive: "Automotive",
-                sector_retail: "Retail",
-                sector_finance_insurance: "Finanza e Assicurazioni",
-                sector_health_wellness: "Salute e Benessere",
-                sector_education: "Educazione",
-                sector_tech_software: "Tecnologia e Software",
-                sector_manufacturing: "Industria Manifatturiera",
-                sector_other: "Altro",
+                sector_PubblicaAmministrazione: "Pubblica Amministrazione",
+                sector_Automotive: "Automotive",
+                sector_Retail: "Retail",
+                sector_FinanzaeAssicurazioni: "Finanza e Assicurazioni", // NOTA IL "e" al posto di "&"
+                sector_SaluteeBenessere: "Salute e Benessere", // NOTA IL "e" al posto di "&"
+                sector_Educazione: "Educazione",
+                sector_TecnologiaeSoftware: "Tecnologia e Software", // NOTA IL "e" al posto di "&"
+                sector_IndustriaManifatturiera: "Industria Manifatturiera",
+                sector_Altro: "Altro",
                 all_sectors_option: "Tutti i Settori",
                 customize_weights_title: "Personalizza Pesi Variabili",
                 customize_weights_desc: "Trascina gli slider per aggiustare l'importanza di ogni variabile. La somma totale resterà sempre 100%. Il \"Final Adjusted Score\" verrà ricalcolato dinamicamente.",
@@ -1038,15 +1038,15 @@
                 upload_processing_title: "Analysis in progress...",
                 upload_processing_desc: "Your pitch deck is being analyzed. The dashboard will update automatically.",
                 upload_success_analysis_starts: "Upload complete! Starting analysis...",
-                sector_public_admin: "Public Administration",
-                sector_automotive: "Automotive",
-                sector_retail: "Retail", // O "Retail Sector" se preferisci una traduzione diversa
-                sector_finance_insurance: "Finance & Insurance",
-                sector_health_wellness: "Health & Wellness",
-                sector_education: "Education",
-                sector_tech_software: "Technology & Software",
-                sector_manufacturing: "Manufacturing Industry",
-                sector_other: "Other",
+                sector_PublicAdministration: "Public Administration",
+                sector_Automotive: "Automotive",
+                sector_Retail: "Retail",
+                sector_FinanceInsurance: "Finance & Insurance",
+                sector_HealthWellness: "Health & Wellness",
+                sector_Education: "Education",
+                sector_TechnologySoftware: "Technology & Software",
+                sector_ManufacturingIndustry: "Manufacturing Industry",
+                sector_Other: "Other",
                 all_sectors_option: "All Sectors",
                 customize_weights_title: "Customize Variable Weights",
                 customize_weights_desc: "Drag the sliders to adjust the importance of each variable. The total sum will always remain 100%. The \"Final Adjusted Score\" will be recalculated dynamically.",
@@ -1061,14 +1061,12 @@
 
         function setLanguage(lang) {
             currentLanguage = lang;
-            localStorage.setItem('language', lang); // Save language preference
-            document.documentElement.lang = lang; // Set lang attribute on <html>
+            localStorage.setItem('language', lang);
+            document.documentElement.lang = lang;
 
-            // Update all elements with data-i18n-key
             document.querySelectorAll('[data-i18n-key]').forEach(element => {
                 const key = element.getAttribute('data-i18n-key');
                 if (translations[lang] && translations[lang][key]) {
-                    // Handle placeholder attributes separately
                     if (element.tagName === 'INPUT' && element.hasAttribute('placeholder')) {
                         element.setAttribute('placeholder', translations[lang][key]);
                     } else if (element.tagName === 'IMG' && element.hasAttribute('alt')) {
@@ -1082,32 +1080,78 @@
                 }
             });
 
-            // Update specific dynamic texts (messages, etc.)
             if (window.firebaseAuth.currentUser) {
-                userEmailSpan.textContent = window.firebaseAuth.currentUser.email; // Email text content is NOT translated
+                userEmailSpan.textContent = window.firebaseAuth.currentUser.email;
                 profileCircle.textContent = window.firebaseAuth.currentUser.email ? window.firebaseAuth.currentUser.email.charAt(0).toUpperCase() : 'U';
             }
 
-            // Update messages
-            noDataChartDiv.textContent = translations[currentLanguage].no_chart_data;
-            noDataTableDiv.textContent = translations[currentLanguage].no_table_data;
-            noCoreMetricsDataDiv.textContent = translations[currentLanguage].no_summary_data;
-            noCoherenceDataDiv.textContent = translations[currentLanguage].no_coherence_data;
-            noRankingDataDiv.textContent = translations[currentLanguage].no_ranking_data;
+            // Recupera questi elementi localmente all'inizio di setLanguage
+            // se non sono già stati recuperati altrove in modo sicuro.
+            const localNoDataChartDiv = document.getElementById('noDataChart');
+            const localNoDataTableDiv = document.getElementById('noDataTable');
+            const localNoCoreMetricsDataDiv = document.getElementById('noCoreMetricsData');
+            const localNoCoherenceDataDiv = document.getElementById('noCoherenceData');
+            const localNoRankingDataDiv = document.getElementById('noRankingData');
+            const localSectorFilter = document.getElementById('sectorFilter'); // Recupera localmente
 
-            // Re-render charts to update labels if needed
-            if (window.firebaseAuth.currentUser && Object.keys(loadedAllData).length > 0) {
-                // Se c'è un documento selezionato, lo aggiorna, altrimenti prende il primo disponibile
-                const currentSelectedDocId = documentSelector.value;
+            // Ora usa le variabili locali con i controlli
+            if (localNoDataChartDiv) localNoDataChartDiv.textContent = translations[currentLanguage].no_chart_data;
+            if (localNoDataTableDiv) localNoDataTableDiv.textContent = translations[currentLanguage].no_table_data;
+            if (localNoCoreMetricsDataDiv) localNoCoreMetricsDataDiv.textContent = translations[currentLanguage].no_summary_data;
+            if (localNoCoherenceDataDiv) localNoCoherenceDataDiv.textContent = translations[currentLanguage].no_coherence_data;
+            if (localNoRankingDataDiv) localNoRankingDataDiv.textContent = translations[currentLanguage].no_ranking_data;
+
+            
+            const currentUniqueSectors = new Set();
+            for (const docId in loadedAllData) {
+                if (loadedAllData[docId].settore) {
+                    currentUniqueSectors.add(loadedAllData[docId].settore);
+                }
+            }
+            // Usa localSectorFilter qui
+            if (localSectorFilter) {
+                populateSectorFilter(Array.from(currentUniqueSectors));
+            }
+
+
+            // Recupera documentSelector qui, poco prima di usarlo,
+            // e solo se la dashboard è potenzialmente visibile.
+            const currentDocumentSelector = document.getElementById('documentSelector'); // Re-recupera l'elemento
+
+            // Ora usa currentDocumentSelector invece della variabile globale documentSelector
+            if (window.firebaseAuth.currentUser && Object.keys(loadedAllData).length > 0 && currentDocumentSelector) {
+                const currentSelectedDocId = currentDocumentSelector.value;
                 if (currentSelectedDocId && loadedAllData[currentSelectedDocId]) {
                     updateMainDashboard(currentSelectedDocId);
                 } else if (Object.keys(loadedAllData).length > 0) {
-                    updateMainDashboard(Object.keys(loadedAllData)[0]); // Se non c'è selezione, prendi il primo
+                    const sortedDocIds = Object.keys(loadedAllData).sort((a, b) => a.localeCompare(b));
+                    if (sortedDocIds.length > 0) {
+                        currentDocumentSelector.value = sortedDocIds[0];
+                        updateMainDashboard(sortedDocIds[0]);
+                    } else {
+                        clearMainDashboard();
+                    }
                 } else {
-                    clearMainDashboard(); // Nessun dato, pulisci
+                    clearMainDashboard();
                 }
 
-                fetchAndRenderRanking(document.querySelector('input[name="pitchFilter"]:checked').value); // Re-render ranking
+                if (!dealFlowDashboard.classList.contains('hidden')) {
+                    // Assicurati che pitchFilterRadios esista prima di usarlo
+                    const currentPitchFilterRadio = document.querySelector('input[name="pitchFilter"]:checked');
+                    if (currentPitchFilterRadio) {
+                        fetchAndRenderRanking(currentPitchFilterRadio.value);
+                    }
+                }
+            } else if (window.firebaseAuth.currentUser && Object.keys(loadedAllData).length === 0 && currentDocumentSelector) {
+                currentDocumentSelector.innerHTML = '';
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = translations[currentLanguage].no_pitch_deck_available;
+                currentDocumentSelector.appendChild(option);
+                currentDocumentSelector.disabled = true;
+                clearMainDashboard();
+            } else if (!window.firebaseAuth.currentUser) {
+                clearMainDashboard();
             }
         }
 
@@ -1602,39 +1646,29 @@
         }
 
         // Funzione per popolare dinamicamente il filtro dei settori
-        function populateSectorFilter() {
-            const sectorFilter = document.getElementById('sectorFilter');
-            if (!sectorFilter) return; // Aggiungi un controllo per assicurarti che l'elemento esista
+        function populateSectorFilter(sectorsArray) {
+             const localSectorFilter = document.getElementById('sectorFilter');
+            if (!localSectorFilter) return;
 
-            // Pulisce le opzioni vecchie, mantenendo la prima ("Tutti i settori")
-            // IMPORTANTE: la prima opzione "Tutti i Settori" deve avere data-i18n-key="all_sectors_option" nell'HTML!
-            sectorFilter.innerHTML = '<option value="Tutti" data-i18n-key="all_sectors_option"></option>';
-            // La sua traduzione verrà aggiornata dalla applyTranslations generale,
-            // ma per essere sicuri che il testo iniziale sia corretto, lo aggiorniamo qui se serve.
-            sectorFilter.querySelector('option[value="Tutti"]').textContent = translations[currentLanguage].all_sectors_option;
+            localSectorFilter.innerHTML = '<option value="Tutti" data-i18n-key="all_sectors_option"></option>';
+            localSectorFilter.querySelector('option[value="Tutti"]').textContent = translations[currentLanguage].all_sectors_option;
 
-            PREDEFINED_SECTORS_FRONTEND.forEach(sector => { // Usa la lista globale
+            const sortedSectors = [...new Set(sectorsArray)].sort();
+
+            sortedSectors.forEach(sector => {
                 const option = document.createElement('option');
-                // Crea la chiave di traduzione. Rimuovi spazi e caratteri speciali per la chiave.
-                // Ad esempio "Pubblica Amministrazione" -> "sector_PubblicaAmministrazione"
                 const translationKey = `sector_${sector.replace(/\s/g, '').replace(/&/g, 'e').replace(/[^\w]/g, '')}`;
 
-                option.value = sector; // Il valore effettivo per il filtro (la stringa italiana canonica)
-                // Imposta il testo visualizzato usando la traduzione corrente
+                option.value = sector;
                 option.textContent = translations[currentLanguage][translationKey] || sector;
-
-                // Aggiungi l'attributo data-i18n-key all'opzione dinamica
-                // Questo è il modo corretto per farla funzionare con il sistema generale di traduzione,
-                // anche se la ri-popoleremo esplicitamente qui al cambio lingua.
                 option.setAttribute('data-i18n-key', translationKey);
-
-                sectorFilter.appendChild(option);
+                localSectorFilter.appendChild(option);
             });
             console.log("Filtro settore ri-popolato per lingua:", currentLanguage);
         }
 
 
-       
+
 
         // Funzione per renderizzare il grafico (esempio con un semplice array per il grafico a barre)
         function renderChart(dataToDisplay) {
@@ -1726,58 +1760,59 @@
 
                 loadedAllData = data;
 
-                const sectors = new Set();
+                // Raccogli tutti i settori unici presenti nei dati caricati
+                const uniqueSectors = new Set();
                 for (const docId in loadedAllData) {
                     if (loadedAllData[docId].settore) {
-                        sectors.add(loadedAllData[docId].settore);
+                        uniqueSectors.add(loadedAllData[docId].settore);
                     }
                 }
-                // Pulisce le opzioni vecchie, mantenendo la prima ("Tutti i settori")
-                sectorFilter.innerHTML = '<option value="Tutti" data-i18n-key="all_sectors_option">Tutti i Settori</option>';
-                sectors.forEach(sector => {
-                    const option = document.createElement('option');
-                    const translationKey = `sector_${sector.replace(/\s/g, '')}`;
-                    option.value = sector;
-                    option.textContent = translations[currentLanguage][translationKey] || sector;
-                    sectorFilter.appendChild(option);
-                });
+                const localSectorFilter = document.getElementById('sectorFilter'); // Recupera localmente
+                if (localSectorFilter) { // Controllo aggiunto
+                    populateSectorFilter(Array.from(uniqueSectors));
+                }
 
-                // Populate document selector for Home Dashboard
-                documentSelector.innerHTML = '';
-                if (Object.keys(loadedAllData).length === 0) {
-                    const option = document.createElement('option');
-                    option.value = '';
-                    option.textContent = translations[currentLanguage].no_pitch_deck_available;
-                    documentSelector.appendChild(option);
-                    documentSelector.disabled = true;
-                    clearMainDashboard();
-                } else {
-                    documentSelector.disabled = false;
-                    const sortedDocIds = Object.keys(loadedAllData).sort((a, b) => a.localeCompare(b));
-                    sortedDocIds.forEach(docId => {
+                const localDocumentSelector = document.getElementById('documentSelector'); // Recupera localmente
+
+                if (localDocumentSelector) { // Controllo aggiunto
+                    localDocumentSelector.innerHTML = '';
+                    if (Object.keys(loadedAllData).length === 0) {
                         const option = document.createElement('option');
-                        option.value = docId;
-                        option.textContent = loadedAllData[docId].document_name || docId;
-                        documentSelector.appendChild(option);
-                    });
-                    if (sortedDocIds.length > 0) {
-                        documentSelector.value = sortedDocIds[0];
-                        updateMainDashboard(sortedDocIds[0]);
+                        option.value = '';
+                        option.textContent = translations[currentLanguage].no_pitch_deck_available;
+                        localDocumentSelector.appendChild(option);
+                        localDocumentSelector.disabled = true;
+                        clearMainDashboard();
+                    } else {
+                        localDocumentSelector.disabled = false;
+                        const sortedDocIds = Object.keys(loadedAllData).sort((a, b) => a.localeCompare(b));
+                        sortedDocIds.forEach(docId => {
+                            const option = document.createElement('option');
+                            option.value = docId;
+                            option.textContent = loadedAllData[docId].document_name || docId;
+                            localDocumentSelector.appendChild(option);
+                        });
+                        if (sortedDocIds.length > 0) {
+                            localDocumentSelector.value = sortedDocIds[0];
+                            updateMainDashboard(sortedDocIds[0]);
+                        }
                     }
+                } else {
+                    console.warn("Elemento #documentSelector non trovato in fetchDataInBothDashboards.");
+                    clearMainDashboard();
                 }
-
             } catch (error) {
                 console.error("Error retrieving data from Cloud Function API:", error);
                 clearMainDashboard();
             } finally {
-                loadingOverlay.classList.add('hidden'); // Hide loading overlay
+                loadingOverlay.classList.add('hidden');
             }
         }
 
-
         // Function to render the ranking dashboard (uses already loaded data)
         async function fetchAndRenderRanking(filterType = 'my') {
-            const selectedSector = sectorFilter.value;
+            const localSectorFilter = document.getElementById('sectorFilter'); // Recupera localmente
+            const selectedSector = localSectorFilter ? localSectorFilter.value : 'Tutti'; // Gestione se è null
             const user = auth.currentUser;
             console.log("--- DEBUG: Avvio fetchAndRenderRanking ---");
             console.log("Settore selezionato:", selectedSector);
@@ -1949,12 +1984,11 @@
         }
 
         function recalculateAndDisplayMyScore() {
-            const selectedDocId = documentSelector.value;
+            const localDocumentSelector = document.getElementById('documentSelector'); // Recupera localmente
+            if (!localDocumentSelector) return; // Selettore non trovato
+
+            const selectedDocId = localDocumentSelector.value;
             if (!selectedDocId || !loadedAllData[selectedDocId]) return;
-
-            const variables = loadedAllData[selectedDocId].variables;
-            if (!variables || variables.length === 0) return;
-
             let newWeightedScore = 0;
             variables.forEach(variable => {
                 const variableName = variable.nome_variabile;
@@ -2104,9 +2138,10 @@
 
             document.querySelectorAll('input[name="scoreMode"]').forEach(radio => {
                 radio.addEventListener('change', () => {
-                    // Quando cambi modalità, riesegui l'aggiornamento della dashboard
-                    // per mostrare/nascondere la sezione e ricalcolare.
-                    updateMainDashboard(documentSelector.value);
+                    const currentDocumentSelector = document.getElementById('documentSelector'); // Recupera localmente
+                    if (currentDocumentSelector) { // Aggiungi controllo
+                        updateMainDashboard(currentDocumentSelector.value);
+                    }
                 });
             });
 
@@ -2205,24 +2240,32 @@
                 showDashboardSection('dealFlow');
             });
 
+            const initialDocumentSelector = document.getElementById('documentSelector');
+            if (initialDocumentSelector) {
+                initialDocumentSelector.addEventListener('change', (event) => {
+                    if (auth.currentUser) {
+                        updateMainDashboard(event.target.value);
+                    }
+                });
+            }
+
+            const initialSectorFilter = document.getElementById('sectorFilter');
+            if (initialSectorFilter) {
+                initialSectorFilter.addEventListener('change', () => {
+                    if (auth.currentUser) {
+                        fetchAndRenderRanking();
+                    }
+                });
+            }
+
+            // Per i radio buttons, il querySelectorAll dovrebbe funzionare anche se non sono visibili,
+            // ma l'esecuzione dell'event listener dipende dalla visibilità.
             pitchFilterRadios.forEach(radio => {
                 radio.addEventListener('change', (event) => {
                     if (auth.currentUser) {
                         fetchAndRenderRanking(event.target.value);
                     }
                 });
-            });
-
-            documentSelector.addEventListener('change', (event) => {
-                if (auth.currentUser) {
-                    updateMainDashboard(event.target.value);
-                }
-            });
-
-            sectorFilter.addEventListener('change', () => {
-                if (auth.currentUser) {
-                    fetchAndRenderRanking();
-                }
             });
 
             // Registration related event listeners
