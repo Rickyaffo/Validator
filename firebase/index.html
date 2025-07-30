@@ -1270,48 +1270,12 @@
         function updateMainDashboard(selectedDocumentId) {
             const documentData = loadedAllData[selectedDocumentId];
 
-            console.log("DEBUG: --- Inizio updateMainDashboard ---");
-            console.log("DEBUG: selectedDocumentId:", selectedDocumentId);
-            console.log("DEBUG: documentData (completo):", documentData); // VEDI QUI LA STRUTTURA GENERALE
-
-            // Controlla la sezione core_metrics
-            console.log("DEBUG: documentData.core_metrics:", documentData.core_metrics);
-            if (documentData.core_metrics) {
-                console.log("DEBUG: coreMetrics.final_adjusted_score:", documentData.core_metrics.final_adjusted_score);
-                console.log("DEBUG: coreMetrics.classe_pitch:", documentData.core_metrics.classe_pitch);
+            if (!documentData) {
+                clearMainDashboard();
+                return;
             }
 
-            // Controlla la sezione variables
-            console.log("DEBUG: documentData.variables:", documentData.variables);
-            if (documentData.variables && documentData.variables.length > 0) {
-                console.log("DEBUG: Prima variabile:", documentData.variables[0]);
-                console.log("DEBUG: Motivazione della prima variabile:", documentData.variables[0].motivazione_variabile);
-                console.log("DEBUG: Motivazione della prima variabile (IT):", documentData.variables[0].motivazione_variabile.it);
-                console.log("DEBUG: Motivazione della prima variabile (EN):", documentData.variables[0].motivazione_variabile.en);
-            }
-
-            console.log("Valore di executive_summary:", documentData.executive_summary);
-
-            if (documentData && documentData.executive_summary && typeof documentData.executive_summary === 'object') {
-                // Seleziona la traduzione corretta, con fallback sull'italiano
-                summaryModalText.textContent = documentData.executive_summary[currentLanguage] || documentData.executive_summary.it;
-                showSummaryBtn.classList.remove('hidden');
-            } else {
-                showSummaryBtn.classList.add('hidden');
-            }
-
-            // Controlla la sezione coherence_pairs
-            console.log("DEBUG: documentData.coherence_pairs:", documentData.coherence_pairs);
-            if (documentData.coherence_pairs && documentData.coherence_pairs.length > 0) {
-                console.log("DEBUG: Prima coppia di coerenza:", documentData.coherence_pairs[0]);
-                console.log("DEBUG: Motivazione della prima coppia di coerenza:", documentData.coherence_pairs[0].motivazione_coppia);
-                console.log("DEBUG: Motivazione della prima coppia di coerenza (IT):", documentData.coherence_pairs[0].motivazione_coppia.it);
-                console.log("DEBUG: Motivazione della prima coppia di coerenza (EN):", documentData.coherence_pairs[0].motivazione_coppia.en);
-            }
-            console.log("DEBUG: currentLanguage:", currentLanguage);
-            console.log("DEBUG: --- Fine Inizio updateMainDashboard ---");
-
-
+            // Pulisce la vista precedente
             noCoreMetricsDataDiv.classList.add('hidden');
             noDataChartDiv.classList.add('hidden');
             noDataTableDiv.classList.add('hidden');
@@ -1319,78 +1283,41 @@
             variablesChartCanvas.style.display = 'none';
             if (coherenceDoughnutChartCanvas) coherenceDoughnutChartCanvas.style.display = 'none';
 
-            if (!documentData) {
-                clearMainDashboard();
-                return;
+            // Gestisce il sommario
+            if (documentData && documentData.executive_summary && typeof documentData.executive_summary === 'object') {
+                summaryModalText.textContent = documentData.executive_summary[currentLanguage] || documentData.executive_summary.it;
+                showSummaryBtn.classList.remove('hidden');
+            } else {
+                showSummaryBtn.classList.add('hidden');
             }
 
             const selectedMode = document.querySelector('input[name="scoreMode"]:checked').value;
 
+            // Logica principale basata sulla modalità
             if (selectedMode === 'validatr') {
                 customWeightsSection.classList.add('hidden');
-                // Ripristina il valore originale dal backend
-                if (documentData && documentData.core_metrics) {
-                    finalAdjustedScoreValue.textContent = documentData.core_metrics.final_adjusted_score ? documentData.core_metrics.final_adjusted_score.toFixed(2) : '--';
-                }
-            } else {
-                customWeightsSection.classList.remove('hidden');
-                initializeSliders(); // Crea o aggiorna gli slider
-                recalculateAndDisplayMyScore(); // Esegui subito il primo calcolo
-            }
-
-            // Update summary scorecards (using core_metrics)
-            if (documentData.core_metrics) {
-                const coreMetrics = documentData.core_metrics;
-                finalAdjustedScoreValue.textContent = coreMetrics.final_adjusted_score ? coreMetrics.final_adjusted_score.toFixed(2) : '--';
-                coherenceIndexValue.textContent = coreMetrics.indice_coerenza ? coreMetrics.indice_coerenza.toFixed(2) : '--';
-
-                // Translate Pitch Class
-                const pitchClassKey = `class_${coreMetrics.classe_pitch}`;
-                pitchClassValue.textContent = translations[currentLanguage][pitchClassKey] || coreMetrics.classe_pitch || '--';
-
-                const scorecardClasses = ['bg-class-investire', 'bg-class-monitorare', 'bg-class-verificare', 'bg-class-pass', 'bg-class-default-scorecard'];
-                pitchClassCard.classList.remove(...scorecardClasses);
-
-                // Reintegrated icon and card background color logic based on pitch class
-                finalAdjustedScoreIcon.className = 'score-icon';
-                coherenceIndexIcon.className = 'score-icon';
-                pitchClassIcon.className = 'score-icon';
-                finalAdjustedScoreIcon.textContent = 'analytics';
-                coherenceIndexIcon.textContent = 'alt_route';
-                pitchClassIcon.textContent = 'emoji_events';
-
-                const currentClass = coreMetrics.classe_pitch;
-                if (currentClass === 'INVESTIRE') {
-                    finalAdjustedScoreIcon.classList.add('score-class-investire');
-                    coherenceIndexIcon.classList.add('score-class-investire');
-                    pitchClassIcon.classList.add('score-class-investire');
-                    pitchClassCard.classList.add('bg-class-investire');
-                } else if (currentClass === 'MONITORARE') {
-                    finalAdjustedScoreIcon.classList.add('score-class-monitorare');
-                    coherenceIndexIcon.classList.add('score-class-monitorare');
-                    pitchClassIcon.classList.add('score-class-monitorare');
-                    pitchClassCard.classList.add('bg-class-monitorare');
-                } else if (currentClass === 'VERIFICARE') {
-                    finalAdjustedScoreIcon.classList.add('score-class-verificare');
-                    coherenceIndexIcon.classList.add('score-class-verificare');
-                    pitchClassIcon.classList.add('score-class-verificare');
-                    pitchClassCard.classList.add('bg-class-verificare');
-                } else if (currentClass === 'PASS') {
-                    finalAdjustedScoreIcon.classList.add('score-class-pass');
-                    coherenceIndexIcon.classList.add('score-class-pass');
-                    pitchClassIcon.classList.add('score-class-pass');
-                    pitchClassCard.classList.add('bg-class-pass');
+                
+                // Aggiorna le scorecard solo se siamo in modalità "Score Validatr™"
+                if (documentData.core_metrics) {
+                    const coreMetrics = documentData.core_metrics;
+                    finalAdjustedScoreValue.textContent = coreMetrics.final_adjusted_score ? coreMetrics.final_adjusted_score.toFixed(2) : '--';
+                    coherenceIndexValue.textContent = coreMetrics.indice_coerenza ? coreMetrics.indice_coerenza.toFixed(2) : '--';
+                    const pitchClassKey = `class_${coreMetrics.classe_pitch}`;
+                    pitchClassValue.textContent = translations[currentLanguage][pitchClassKey] || coreMetrics.classe_pitch || '--';
+                    updatePitchClassUI(coreMetrics.classe_pitch); // Usa la funzione di supporto per aggiornare colori e icone
                 } else {
-                    finalAdjustedScoreIcon.classList.add('score-class-default');
-                    coherenceIndexIcon.classList.add('score-class-default');
-                    pitchClassIcon.classList.add('score-class-default');
-                    pitchClassCard.classList.add('bg-class-default-scorecard');
+                    noCoreMetricsDataDiv.classList.remove('hidden');
                 }
-            } else {
-                noCoreMetricsDataDiv.classList.remove('hidden');
+
+            } else { // Modalità "Il Mio Score"
+                customWeightsSection.classList.remove('hidden');
+                initializeSliders();
+                recalculateAndDisplayMyScore(); // Questa funzione aggiorna le scorecard e non viene più sovrascritta
             }
 
-            // Update Variables Chart and Table (use variables)
+            // Il resto del codice per aggiornare tabelle e grafici è comune a entrambe le modalità
+
+            // Aggiorna Grafico e Tabella Variabili
             if (documentData.variables && documentData.variables.length > 0) {
                 variablesChartCanvas.style.display = 'block';
                 noDataChartDiv.classList.add('hidden');
@@ -1402,31 +1329,30 @@
                 });
                 const scores = documentData.variables.map(v => v.punteggio_variabile);
                 const motivations = documentData.variables.map(v => v.motivazione_variabile);
-
-                // Reintegrated barColor and borderColor logic based on pitch class
+                
                 const barColor = (score) => {
                     const currentClass = documentData.core_metrics?.classe_pitch;
-                    if (currentClass === 'INVESTIRE') return '#10b981'; /* emerald-500 */
-                    if (currentClass === 'MONITORARE') return '#f59e0b'; /* amber-500 */
-                    if (currentClass === 'VERIFICARE') return '#f97316'; /* orange-600 */
-                    if (currentClass === 'PASS') return '#ef4444'; /* red-500 */
-                    return '#cbd5e1'; /* slate-300 */
+                    if (currentClass === 'INVESTIRE') return '#10b981';
+                    if (currentClass === 'MONITORARE') return '#f59e0b';
+                    if (currentClass === 'VERIFICARE') return '#f97316';
+                    if (currentClass === 'PASS') return '#ef4444';
+                    return '#cbd5e1';
                 };
                 const borderColor = (score) => {
                     const currentClass = documentData.core_metrics?.classe_pitch;
-                    if (currentClass === 'INVESTIRE') return '#059669'; /* emerald-600 */
-                    if (currentClass === 'MONITORARE') return '#d97706'; /* amber-600 */
-                    if (currentClass === 'VERIFICARE') return '#ea580c'; /* orange-700 */
-                    if (currentClass === 'PASS') return '#dc2626'; /* red-600 */
-                    return '#94a3b8'; /* slate-400 */
+                    if (currentClass === 'INVESTIRE') return '#059669';
+                    if (currentClass === 'MONITORARE') return '#d97706';
+                    if (currentClass === 'VERIFICARE') return '#ea580c';
+                    if (currentClass === 'PASS') return '#dc2626';
+                    return '#94a3b8';
                 };
 
                 if (variablesChart) {
                     variablesChart.data.labels = labels;
                     variablesChart.data.datasets[0].data = scores;
                     variablesChart.data.datasets[0].motivations = motivations;
-                    variablesChart.data.datasets[0].backgroundColor = scores.map(barColor); // Use the new barColor function
-                    variablesChart.data.datasets[0].borderColor = scores.map(borderColor);   // Use the new borderColor function
+                    variablesChart.data.datasets[0].backgroundColor = scores.map(barColor);
+                    variablesChart.data.datasets[0].borderColor = scores.map(borderColor);
                     variablesChart.update();
                 } else {
                     const ctx = variablesChartCanvas.getContext('2d');
@@ -1437,8 +1363,8 @@
                             datasets: [{
                                 label: translations[currentLanguage].score_header,
                                 data: scores,
-                                backgroundColor: scores.map(barColor), // Use the new barColor function
-                                borderColor: scores.map(borderColor),   // Use the new borderColor function
+                                backgroundColor: scores.map(barColor),
+                                borderColor: scores.map(borderColor),
                                 borderWidth: 1,
                                 motivations: motivations
                             }]
@@ -1452,65 +1378,57 @@
                                         label: (context) => `${translations[currentLanguage].score_header}: ${context.parsed.x}`,
                                         afterLabel: (context) => {
                                             const motivation = context.dataset.motivations[context.dataIndex];
-                                            return `${translations[currentLanguage].motivation_header}: ${(motivation[currentLanguage] || motivation.it || translations[currentLanguage].no_motivation_available)}`;
+                                            const motivationText = (typeof motivation === 'object' && motivation !== null)
+                                                ? (motivation[currentLanguage] || motivation.it)
+                                                : motivation;
+                                            return `${translations[currentLanguage].motivation_header}: ${motivationText || translations[currentLanguage].no_motivation_available}`;
                                         }
                                     }
                                 }
                             },
                             scales: {
-                                x: {
-                                    beginAtZero: true, max: 100,
-                                    title: { display: true, text: translations[currentLanguage].chart_score_label, color: '#475569' },
-                                    ticks: { color: '#475569' }, grid: { color: '#e2e8f0' }
-                                },
-                                y: {
-                                    title: { display: true, text: translations[currentLanguage].chart_variable_label, color: '#475569' },
-                                    ticks: { color: '#475569' }, grid: { color: '#e2e8f0' }
-                                }
+                                x: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLanguage].chart_score_label, color: '#475569' }, ticks: { color: '#475569' }, grid: { color: '#e2e8f0' } },
+                                y: { title: { display: true, text: translations[currentLanguage].chart_variable_label, color: '#475569' }, ticks: { color: '#475569' }, grid: { color: '#e2e8f0' } }
                             }
                         }
                     });
                 }
-
-                // Update Variables Table
+                
                 variablesTableBody.innerHTML = '';
                 documentData.variables.forEach(v => {
                     const tr = document.createElement('tr');
                     tr.className = 'border-b border-slate-200 text-slate-700';
-
                     const nameCell = document.createElement('td');
                     nameCell.className = 'py-3 px-4';
                     const translationKey = `variable_${v.nome_variabile.replace(/\s/g, '')}`;
                     nameCell.textContent = translations[currentLanguage][translationKey] || v.nome_variabile;
                     tr.appendChild(nameCell);
-
                     const scoreCell = document.createElement('td');
                     scoreCell.className = 'py-3 px-4 text-center font-medium';
                     scoreCell.textContent = v.punteggio_variabile;
                     tr.appendChild(scoreCell);
-
                     const motivationCell = document.createElement('td');
                     motivationCell.className = 'py-3 px-4 text-sm';
-                    motivationCell.textContent = v.motivazione_variabile[currentLanguage] || v.motivazione_variabile.it || translations[currentLanguage].no_motivation_available;
+                    const motivationData = v.motivazione_variabile;
+                    if (typeof motivationData === 'object' && motivationData !== null) {
+                        motivationCell.textContent = motivationData[currentLanguage] || motivationData.it || translations[currentLanguage].no_motivation_available;
+                    } else {
+                        motivationCell.textContent = motivationData || translations[currentLanguage].no_motivation_available;
+                    }
                     tr.appendChild(motivationCell);
-
                     variablesTableBody.appendChild(tr);
                 });
             } else {
-                variablesChartCanvas.style.display = 'none';
-                variablesTableBody.innerHTML = '';
                 noDataChartDiv.classList.remove('hidden');
                 noDataTableDiv.classList.remove('hidden');
-                if (variablesChart) variablesChart.destroy();
             }
 
-            // Update Coherence Details with Dropdown (use coherence_pairs)
+            // Aggiorna Dettagli Coerenza
             if (documentData.coherence_pairs && documentData.coherence_pairs.length > 0) {
-                noCoherenceDataDiv.classList.add('hidden'); // Nasconde il messaggio "nessun dato"
-                coherenceDoughnutChartCanvas.style.display = 'block'; // Mostra l'area del grafico
-
-                // --- POPOLA IL MENU A TENDINA ---
-                coherencePairSelector.innerHTML = '<option value="">' + translations[currentLanguage].select_pair_label + '</option>';
+                noCoherenceDataDiv.classList.add('hidden');
+                coherenceDoughnutChartCanvas.style.display = 'block';
+                
+                coherencePairSelector.innerHTML = ''; // Svuota prima di ripopolare
                 documentData.coherence_pairs.forEach((cp, index) => {
                     const option = document.createElement('option');
                     option.value = index;
@@ -1521,114 +1439,45 @@
                     coherencePairSelector.appendChild(option);
                 });
                 coherencePairSelector.disabled = false;
-
-                // --- FUNZIONE PER AGGIORNARE I DETTAGLI (PUNTEGGIO E MOTIVAZIONE) ---
+                
                 const updateSelectedCoherenceDetails = (selectedIndex) => {
-                    // console.log('--- DEBUG: Chiamata updateSelectedCoherenceDetails con index:', selectedIndex);
-
-                    // Controlla se l'indice non è valido (es. se è selezionata l'opzione di default)
                     if (selectedIndex === "" || !documentData.coherence_pairs[selectedIndex]) {
-                        // console.log('--- DEBUG: Indice non valido. Imposto i valori di default.');
                         selectedCoherenceScore.textContent = '--';
-                        selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available || 'Nessuna motivazione disponibile.';
+                        selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
                         return;
                     }
-
-                    // Ottieni l'oggetto con i dati della coppia selezionata
                     const selectedPair = documentData.coherence_pairs[selectedIndex];
-                    // console.log('--- DEBUG: Dati della coppia recuperati:', selectedPair);
-
-                    // Estrai punteggio e motivazione in variabili separate per chiarezza
-                    const score = selectedPair.punteggio_coppia;
-                    const motivationText = selectedPair.motivazione_coppia[currentLanguage] || selectedPair.motivazione_coppia.it || translations[currentLanguage].no_motivation_available;
-
-                    // console.log('--- DEBUG: Punteggio che verrà visualizzato:', score);
-                    // console.log('--- DEBUG: Motivazione che verrà visualizzata:', motivationText);
-
-                    // Aggiorna gli elementi HTML con i nuovi valori
-                    selectedCoherenceScore.textContent = score ?? '--';
-                    selectedCoherenceMotivation.textContent = motivationText ?? 'Nessuna motivazione disponibile.';
-
-                    // console.log('--- DEBUG: Update completato. Contenuto del box dettagli:', document.getElementById('coherenceDetails').innerHTML);
+                    selectedCoherenceScore.textContent = selectedPair.punteggio_coppia ?? '--';
+                    const motivationData = selectedPair.motivazione_coppia;
+                    if (typeof motivationData === 'object' && motivationData !== null) {
+                        selectedCoherenceMotivation.textContent = motivationData[currentLanguage] || motivationData.it || translations[currentLanguage].no_motivation_available;
+                    } else {
+                        selectedCoherenceMotivation.textContent = motivationData || translations[currentLanguage].no_motivation_available;
+                    }
                 };
-
-                // Imposta il valore di default (la prima coppia) e aggiorna i dettagli
+                
                 coherencePairSelector.value = 0;
                 updateSelectedCoherenceDetails(0);
-
-                // Aggiunge l'evento per aggiornare i dettagli quando cambi la selezione
                 coherencePairSelector.onchange = (event) => {
-                    const selectedIndex = event.target.value !== "" ? parseInt(event.target.value) : "";
-                    updateSelectedCoherenceDetails(selectedIndex);
+                    updateSelectedCoherenceDetails(event.target.value);
                 };
 
-                // --- CREAZIONE DEL GRAFICO A CIAMBELLA (DOUGHNUT CHART) - PARTE MANCANTE ---
                 const highCoherenceCount = documentData.coherence_pairs.filter(p => p.punteggio_coppia >= 75).length;
                 const lowCoherenceCount = documentData.coherence_pairs.length - highCoherenceCount;
-
                 if (coherenceDoughnutChart) {
-                    coherenceDoughnutChart.destroy(); // Distrugge il grafico precedente per evitare duplicati
+                    coherenceDoughnutChart.destroy();
                 }
-
                 const doughnutCtx = coherenceDoughnutChartCanvas.getContext('2d');
                 coherenceDoughnutChart = new Chart(doughnutCtx, {
                     type: 'doughnut',
                     data: {
-                        labels: [
-                            translations[currentLanguage].high_coherence, // Es: 'Alta Coerenza'
-                            translations[currentLanguage].low_coherence   // Es: 'Bassa Coerenza'
-                        ],
-                        datasets: [{
-                            data: [highCoherenceCount, lowCoherenceCount],
-                            backgroundColor: ['#10b981', '#f59e0b'], // Colori per le sezioni
-                            borderColor: ['#ffffff', '#ffffff'],
-                            borderWidth: 2
-                        }]
+                        labels: [translations[currentLanguage].high_coherence, translations[currentLanguage].low_coherence],
+                        datasets: [{ data: [highCoherenceCount, lowCoherenceCount], backgroundColor: ['#10b981', '#f59e0b'], borderColor: ['#ffffff', '#ffffff'], borderWidth: 2 }]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                                labels: { color: '#475569' }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Distribuzione Coerenza',
-                                color: '#475569'
-                            }
-                        }
-                    }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: '#475569' } }, title: { display: true, text: 'Distribuzione Coerenza', color: '#475569' } } }
                 });
-
-            } else { // Se non ci sono dati di coerenza
-                coherenceDoughnutChartCanvas.style.display = 'none';
-                coherencePairSelector.innerHTML = '<option value="">' + translations[currentLanguage].no_coherence_data + '</option>';
-                coherencePairSelector.disabled = true;
-                selectedCoherenceScore.textContent = '--';
-                selectedCoherenceMotivation.textContent = translations[currentLanguage].no_motivation_available;
-                noCoherenceDataDiv.classList.remove('hidden');
-                if (coherenceDoughnutChart) {
-                    coherenceDoughnutChart.destroy();
-                    coherenceDoughnutChart = null;
-                }
-            }
-
-            if (selectedMode === 'validatr') {
-                customWeightsSection.classList.add('hidden');
-                if (documentData && documentData.core_metrics) {
-                    // Ripristina il punteggio originale
-                    finalAdjustedScoreValue.textContent = documentData.core_metrics.final_adjusted_score ? documentData.core_metrics.final_adjusted_score.toFixed(2) : '--';
-
-                    // --- LOGICA AGGIORNATA PER LA CLASSE PITCH ---
-                    // Ripristina la classe pitch originale usando la funzione di supporto
-                    updatePitchClassUI(documentData.core_metrics.classe_pitch);
-                }
             } else {
-                customWeightsSection.classList.remove('hidden');
-                initializeSliders();
-                recalculateAndDisplayMyScore();
+                noCoherenceDataDiv.classList.remove('hidden');
             }
         }
 
@@ -2017,11 +1866,19 @@
         }
 
         function recalculateAndDisplayMyScore() {
-            const localDocumentSelector = document.getElementById('documentSelector'); // Recupera localmente
-            if (!localDocumentSelector) return; // Selettore non trovato
+            const localDocumentSelector = document.getElementById('documentSelector');
+            if (!localDocumentSelector) return;
 
             const selectedDocId = localDocumentSelector.value;
             if (!selectedDocId || !loadedAllData[selectedDocId]) return;
+
+            const documentData = loadedAllData[selectedDocId];
+            const variables = documentData.variables;
+
+            // Esci se non ci sono dati delle variabili con cui eseguire i calcoli.
+            if (!variables || variables.length === 0) {
+                return;
+            }
             let newWeightedScore = 0;
             variables.forEach(variable => {
                 const variableName = variable.nome_variabile;
