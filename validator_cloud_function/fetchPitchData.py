@@ -60,7 +60,17 @@ def fetchPitchData(request):
             doc_data = doc.to_dict()
             
             transformed_doc_data = {}
-            transformed_doc_data['document_name'] = doc.id
+            
+            
+            original_doc_name = doc_data.get('document_name', doc.id)
+            
+            # Controlla se il nome finisce con '.pdf' (ignorando maiuscole/minuscole) e lo rimuove.
+            if original_doc_name.lower().endswith('.pdf'):
+                cleaned_doc_name = original_doc_name[:-4]
+            else:
+                cleaned_doc_name = original_doc_name
+            
+            transformed_doc_data['document_name'] = cleaned_doc_name
 
             summary = doc_data.get('executive_summary')
 

@@ -28,10 +28,11 @@ def replicate_analyses(request):
         caller_uid = decoded_token['uid']
         """
         await firebaseAuth.currentUser.getIdToken()
-        'curl -m 70 -X POST "https://europe-west1-validatr-mvp.cloudfunctions.net/replicate_documents_pitch"  \
-        -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjZkZTQwZjA0ODgxYzZhMDE2MTFlYjI4NGE0Yzk1YTI1MWU5MTEyNTAiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdmFsaWRhdHItbXZwIiwiYXVkIjoidmFsaWRhdHItbXZwIiwiYXV0aF90aW1lIjoxNzUzMjE4MTc5LCJ1c2VyX2lkIjoiTDh1M2RYUWV6bWZ2TzZRZXdsYTd1MXBjYlE2MyIsInN1YiI6Ikw4dTNkWFFlem1mdk82UWV3bGE3dTFwY2JRNjMiLCJpYXQiOjE3NTMyMjI0NjMsImV4cCI6MTc1MzIyNjA2MywiZW1haWwiOiJyaWNjYXJkby5hZmZvbHRlckBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJyaWNjYXJkby5hZmZvbHRlckBnbWFpbC5jb20iXX0sInNpZ25faW5fcHJvdmlkZXIiOiJwYXNzd29yZCJ9fQ.G1Tbd_WWXrn939f32DpPMkN3XcuZeNrjB0i0pgytXBjm_A3hoy0YRh2d7G2Dt3ndwmBRTjXtriM6PGGs3zanS-ITsTkU8plthobb0ORTOzivojCTYGa-ok0KNRL7KPmp4ZDiIJw3RXiP4dAr2Xoonn-zYV8UW0__kDJpJ80k5cLrQIO2sA4cSlLZ4rU3bDqxb94Q8L3Ji3HugkziJY3CgD96b_yvYlQQ7x_dqFMCesomFNFdn2o9CHmSLP7Nx-dnAL5VDDuWRknHSCbs4hnDXH9vngo5JWJP8zq4SXaei_oAaoZSmJq28iKqJ1EaAlUBYt_ukWHmnjQHhHI6maslxg"  \
+         curl -m 70 -X POST "https://europe-west1-validatr-mvp.cloudfunctions.net/replicate_documents_pitch"  \
+        -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6Ijk1MWRkZTkzMmViYWNkODhhZmIwMDM3YmZlZDhmNjJiMDdmMDg2NmIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdmFsaWRhdHItbXZwIiwiYXVkIjoidmFsaWRhdHItbXZwIiwiYXV0aF90aW1lIjoxNzUzODg0ODIzLCJ1c2VyX2lkIjoiTDh1M2RYUWV6bWZ2TzZRZXdsYTd1MXBjYlE2MyIsInN1YiI6Ikw4dTNkWFFlem1mdk82UWV3bGE3dTFwY2JRNjMiLCJpYXQiOjE3NTM4ODQ4MjMsImV4cCI6MTc1Mzg4ODQyMywiZW1haWwiOiJyaWNjYXJkby5hZmZvbHRlckBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJyaWNjYXJkby5hZmZvbHRlckBnbWFpbC5jb20iXX0sInNpZ25faW5fcHJvdmlkZXIiOiJwYXNzd29yZCJ9fQ.RYsQwlbAEfVkNmOQivrxvt0HNmDfa4sw7xDcrV3c9fAZnl-B91ZWjIkayybsVLUShPGDBzZF2oJNnJ4BXt5giTY3hAILxfkpU5kmzpSD6dykkgI_gkq-Y-L1nTj2awV3g8k_WO8HiebeAC23GtP7geDgeRL2AWO5YQMyP7Ydn2sfDDt4j4h4Ds1pwS_PIV70afQfDR0zRTW7uIB-e27BnBPU4prOwaK0B2xmYngo8ECJ7O_ceu4miqKZyguOWVqt_nwJgj4woOGZ6YcnKvD2MhMC9V56XCiB48VF1HiCGuAu7qlN9_Ex_-uQ0AhLaPxpBSHUs5XHVAyFFL5SSNBKtQ"  \
         -H "Content-Type: application/json" \
-          -d '{     "source_uid": "L8u3dXQezmfvO6Qewla7u1pcbQ63",     "destination_uid": "ekDXJbgPf5gMDEf1WIdrpsifS7F3"}'"""
+          -d '{     "source_uid": "L8u3dXQezmfvO6Qewla7u1pcbQ63",     "destination_uid": "ekDXJbgPf5gMDEf1WIdrpsifS7F3"}'
+          """
         # IMPORTANTE: Inserisci qui l'UID del tuo account admin.
         # Solo questo utente potrà eseguire la copia.
         ADMIN_UID = "L8u3dXQezmfvO6Qewla7u1pcbQ63" 

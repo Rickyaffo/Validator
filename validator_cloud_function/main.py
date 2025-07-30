@@ -162,9 +162,26 @@ Ricorda che dovrai valutare le informazioni ottenute in maniera analitica e crit
 """
 
     if has_business_plan:
+    # Aggiungi le istruzioni specifiche per l'analisi combinata
         system_prompt_content += """
-**ATTENZIONE:** Ti è stato fornito anche il testo di un Business Plan dopo il testo del Pitch Deck. Quando valuti le variabili e la loro coerenza, **dai priorità alle informazioni presenti nel Business Plan per convalidare, approfondire o, se necessario, correggere le affermazioni fatte nel Pitch Deck.** Il Business Plan dovrebbe fornire dettagli più solidi e numerici. Utilizza i dati e le proiezioni del Business Plan come base principale per i tuoi punteggi e motivazioni, soprattutto per le variabili "Mercato", "Ritorno Atteso", "MVP" e "Team" dove il Business Plan fornisce spesso maggiori evidenze. Se ci sono discrepanze significative tra i due documenti, notale nelle motivazioni.
+
+### ISTRUZIONI PER ANALISI DI DUE DILIGENCE (PITCH DECK + BUSINESS PLAN)
+
+**Principio Guida Fondamentale:**
+Il Business Plan è la **fonte primaria di verità**. Il Pitch Deck fornisce la visione, ma il Business Plan fornisce le prove. Le tue valutazioni e i tuoi punteggi devono basarsi sulle evidenze concrete e sui dati dettagliati del Business Plan.
+
+**Processo di Valutazione Obbligatorio:**
+
+1.  **Lettura Critica:** Analizza il Pitch Deck per capire le affermazioni principali. Successivamente, esamina il Business Plan con scetticismo professionale per trovare i dati che **supportino o smentiscano** tali affermazioni.
+
+2.  **Priorità Assoluta alle Prove:** Per ogni variabile, la tua motivazione e il tuo punteggio devono partire dai dati del Business Plan. Se un'informazione del Pitch Deck non è supportata da evidenze nel Business Plan, considerala **"non verificata"** e assegna un punteggio inferiore.
+
+3.  **Come Gestire le Discrepanze (Regola di Scrittura):**
+    Quando noti una discrepanza tra i due documenti, **evidenziala esplicitamente nella motivazione**. Utilizza una struttura simile a questa:
+    * *Esempio*: "La proiezione finanziaria nel Business Plan indica un fatturato di €1M al terzo anno. Questo **ridimensiona in modo significativo** l'ottimistica stima di €5M presentata nel Pitch Deck."
+    * *Esempio*: "Il Business Plan identifica tre competitor principali. Questo **fornisce un contesto più realistico** rispetto al Pitch Deck, che descriveva il mercato come 'poco affollato'."
 """
+
 
     system_prompt_content += """
 ### Rubrica per i punteggi (0-100):
