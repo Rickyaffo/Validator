@@ -1,0 +1,13 @@
+# app.yaml
+runtime: python39 # Usiamo un runtime python per flessibilità, ma servirà file statici
+
+handlers:
+# Gestisce tutti i file nella cartella frontend
+- url: /(.*)
+  static_files: frontend/\1
+  upload: frontend/(.*)
+
+# Rotta principale che serve index.html quando si visita l'URL base
+- url: /
+  static_files: frontend/index.html
+  upload: frontend/index.html

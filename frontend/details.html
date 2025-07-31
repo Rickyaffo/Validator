@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="it" class=""> <!-- Aggiungi 'dark' qui per testare il tema scuro -->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Memorandum - [Startup Name]</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 0 0% 3.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 0 0% 3.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 0 0% 3.9%;
+            --primary: 0 0% 9%;
+            --primary-foreground: 0 0% 98%;
+            --secondary: 0 0% 96.1%;
+            --secondary-foreground: 0 0% 9%;
+            --muted: 0 0% 96.1%;
+            --muted-foreground: 0 0% 45.1%;
+            --accent: 0 0% 9%;
+            --accent-foreground: 0 0% 98%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 0 0% 98%;
+            --border: 0 0% 89.8%;
+            --input: 0 0% 89.8%;
+            --ring: 0 0% 3.9%;
+            --radius: 0.5rem;
+            --font-display: 'Inter', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        .dark {
+            --background: 0 0% 3.9%;
+            --foreground: 0 0% 98%;
+            --card: 0 0% 3.9%;
+            --card-foreground: 0 0% 98%;
+            --popover: 0 0% 3.9%;
+            --popover-foreground: 0 0% 98%;
+            --primary: 0 0% 98%;
+            --primary-foreground: 0 0% 9%;
+            --secondary: 0 0% 14.9%;
+            --secondary-foreground: 0 0% 98%;
+            --muted: 0 0% 14.9%;
+            --muted-foreground: 0 0% 63.9%;
+            --accent: 0 0% 98%;
+            --accent-foreground: 0 0% 9%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 0 0% 98%;
+            --border: 0 0% 14.9%;
+            --input: 0 0% 14.9%;
+            --ring: 0 0% 83.1%;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .section-card {
+            background-color: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.25rem;
+        }
+
+        .section-subtitle {
+            font-family: var(--font-display);
+            color: hsl(var(--muted-foreground));
+            margin-bottom: 1.5rem;
+        }
+        
+        .llm-box {
+            background-color: hsl(var(--muted) / 0.5);
+            border-left: 3px solid hsl(var(--primary));
+            padding: 1rem;
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 220px;
+            background-color: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -110px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .visual-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 500;
+            font-size: 0.8rem;
+        }
+        
+        .bloomberg-table {
+            width: 100%;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            border-collapse: collapse;
+        }
+        .bloomberg-table tr {
+            border-bottom: 1px solid hsl(var(--border) / 0.5);
+        }
+        .bloomberg-table td {
+            padding: 0.75rem 0.5rem;
+        }
+        .bloomberg-table td:first-child {
+            color: hsl(var(--muted-foreground));
+            font-weight: 500;
+        }
+        .bloomberg-table td:last-child {
+            text-align: right;
+            font-weight: 600;
+        }
+        
+        .status-invest { background-color: #10b98130; color: #059669; }
+        .dark .status-invest { color: #34d399; }
+        .status-monitor { background-color: #f59e0b30; color: #d97706; }
+        .dark .status-monitor { color: #fbbf24; }
+        .status-verify { background-color: #f9731630; color: #ea580c; }
+        .dark .status-verify { color: #fb923c; }
+        .status-pass { background-color: #ef444430; color: #dc2626; }
+        .dark .status-pass { color: #f87171; }
+        
+        .alert-box {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            font-weight: 500;
+            border: 1px solid;
+        }
+        .alert-destructive {
+            background-color: hsl(var(--destructive) / 0.1);
+            color: hsl(var(--destructive));
+            border-color: hsl(var(--destructive) / 0.3);
+        }
+        .alert-warning {
+            background-color: #f59e0b20;
+            color: #d97706;
+            border-color: #f59e0b50;
+        }
+
+    </style>
+</head>
+
+<body class="p-4 sm:p-8 md:p-12">
+
+    <div class="max-w-7xl mx-auto">
+
+        <!-- SEZIONE 0 — DATI CHIAVE -->
+        <section id="key-data" class="section-card">
+            <h2 class="section-title">CarScore</h2>
+            <p class="section-subtitle">Dati Chiave e Riepilogo Investimento</p>
+            <table class="bloomberg-table">
+                <tbody>
+                    <tr><td>Round</td><td id="key-round">Seed</td></tr>
+                    <tr><td>Valuation (Pre-Money)</td><td id="key-valuation">1.000.000 €</td></tr>
+                    <tr><td>Ask</td><td id="key-ask">150.000 € per il 15%</td></tr>
+                    <tr><td>Team Size</td><td id="key-team-size">3</td></tr>
+                    <tr><td>Stage MVP</td><td id="key-mvp-stage">Alpha</td></tr>
+                    <tr><td>Revenue (ARR)</td><td id="key-revenue">0 €</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- SEZIONE 1 — EXECUTIVE SUMMARY -->
+        <section id="executive-summary" class="section-card">
+            <h2 class="section-title">Executive Summary</h2>
+            <p class="section-subtitle">Raccomandazione e tesi d'investimento in sintesi.</p>
+            <div class="mb-6">
+                <span id="summary-recommendation" class="visual-tag status-monitor">MONITORARE</span>
+            </div>
+            <div class="llm-box">
+                <p id="summary-text">La startup presenta segnali iniziali interessanti, ma soffre di carenze importanti su MVP, team e ritorni attesi. Attualmente non è consigliato investire senza milestone validate. Il profilo di rischio è elevato a causa della mancanza di un CTO e di traction iniziale. La valutazione appare alta rispetto allo stadio attuale.</p>
+                <p id="summary-validatr-label" class="font-semibold mt-4">Etichetta Validatr™: “Profilo rischioso. Sconsigliato l'investimento diretto senza validazione delle condizioni.”</p>
+            </div>
+        </section>
+
+        <!-- SEZIONE 2 — ANALISI TEAM -->
+        <section id="team-analysis" class="section-card">
+            <h2 class="section-title">Analisi del Team</h2>
+            <p class="section-subtitle">Valutazione delle competenze e della completezza del team.</p>
+            <ul id="team-list" class="space-y-3 mb-4">
+                <li>Marco Rossi - CEO <span class="visual-tag bg-gray-200 text-gray-800">Ex-Founder</span> <span class="visual-tag bg-blue-200 text-blue-800">Sales</span></li>
+                <li class="flex items-center">❌ Ruolo Mancante - CTO</li>
+            </ul>
+             <div id="team-alert" class="alert-box alert-destructive">
+                <span class="material-icons-outlined mr-2">error_outline</span>
+                <span>Team incompleto, mancano competenze tecniche fondamentali.</span>
+            </div>
+        </section>
+
+        <!-- SEZIONE 3 — POSIZIONAMENTO COMPETITIVO -->
+        <section id="competitive-positioning" class="section-card">
+            <h2 class="section-title">Posizionamento Competitivo</h2>
+            <p class="section-subtitle">Analisi dei competitor e del vantaggio competitivo.</p>
+            <div id="competitor-bubble-chart" class="w-full h-96 bg-gray-50 dark:bg-gray-900 rounded-md mb-4"></div>
+            <div class="llm-box">
+                <p id="competitor-text">La proposta ha ancora bassa differenziazione rispetto ai player consolidati come AutoHero e Brumbrum. Non sono presenti barriere difensive chiare (es. IP, network effects, brand). Il mercato è affollato e richiede un forte vantaggio competitivo per emergere.</p>
+            </div>
+        </section>
+
+        <!-- SEZIONE 4 — ANALISI QUANTITATIVA VALIDATR™ -->
+        <section id="quantitative-analysis" class="section-card">
+            <h2 class="section-title">Analisi Quantitativa VALIDATR™</h2>
+            <p class="section-subtitle">Punteggi dettagliati sui 6 assi di valutazione.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <canvas id="radar-score-chart"></canvas>
+                </div>
+                <div>
+                    <table class="w-full text-sm">
+                        <thead class="border-b border-border">
+                            <tr><th class="text-left py-2">Asse</th><th class="text-right py-2">Punteggio</th></tr>
+                        </thead>
+                        <tbody id="quantitative-table">
+                            <!-- Righe generate da JS -->
+                        </tbody>
+                    </table>
+                     <div id="quantitative-alert" class="alert-box alert-warning mt-4">
+                        <span class="material-icons-outlined mr-2">warning_amber</span>
+                        <span>Incoerenza: lo score del Mercato è alto, ma la Traction è assente.</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Altre sezioni da implementare -->
+        <div class="text-center py-10 border-2 border-dashed border-border rounded-lg">
+            <p class="text-muted-foreground">Sezioni 5-10 in fase di sviluppo...</p>
+        </div>
+
+    </div>
+
+    <script type="module">
+        // Mock data che simula l'output della Cloud Function getMemorandumData
+        const mockData = {
+            key_data: {
+                name: "CarScore",
+                round: "Seed",
+                valuation: "1.000.000 €",
+                ask: "150.000 € per il 15%",
+                team_size: 3,
+                mvp_stage: "Alpha",
+                revenue: "0 €"
+            },
+            executive_summary: {
+                recommendation: "MONITORARE",
+                recommendation_class: "status-monitor",
+                text: "La startup presenta segnali iniziali interessanti, ma soffre di carenze importanti su MVP, team e ritorni attesi. Attualmente non è consigliato investire senza milestone validate.",
+                validatr_label: "Profilo rischioso. Sconsigliato l'investimento diretto senza validazione delle condizioni."
+            },
+            team_analysis: {
+                members: [
+                    { name: "Marco Rossi", role: "CEO", tags: [{ text: "Ex-Founder", class: "bg-gray-200 text-gray-800" }, { text: "Sales", class: "bg-blue-200 text-blue-800" }] },
+                ],
+                missing_roles: ["CTO"],
+                alert: "Team incompleto, mancano competenze tecniche fondamentali."
+            },
+            competitive_positioning: {
+                competitors: [
+                    { name: 'CarScore', moat: 2, traction: 1, tam: 15 },
+                    { name: 'AutoHero', moat: 8, traction: 9, tam: 500 },
+                    { name: 'Brumbrum', moat: 5, traction: 6, tam: 200 },
+                ],
+                analysis_text: "La proposta ha ancora bassa differenziazione. Non sono presenti barriere difensive chiare (IP, network effects, brand loyalty)."
+            },
+            quantitative_analysis: {
+                scores: [
+                    { axis: 'Problema', score: 60 },
+                    { axis: 'Soluzione', score: 45 },
+                    { axis: 'Mercato', score: 75 },
+                    { axis: 'Team', score: 30 },
+                    { axis: 'Traction', score: 10 },
+                    { axis: 'Ritorno', score: 25 },
+                ],
+                alert: "Incoerenza: lo score del Mercato è alto, ma la Traction è assente."
+            }
+        };
+
+        /**
+         * Renderizza la tabella dell'analisi quantitativa.
+         */
+        function renderQuantitativeTable(scores) {
+            const tableBody = document.getElementById('quantitative-table');
+            tableBody.innerHTML = '';
+            scores.forEach(({ axis, score }) => {
+                const row = `
+                    <tr class="border-b border-border/50">
+                        <td class="py-3">${axis}</td>
+                        <td class="text-right font-semibold py-3">${score}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        /**
+         * Inizializza il Radar Chart con i dati dei punteggi.
+         */
+        function initRadarChart(scores) {
+            const ctx = document.getElementById('radar-score-chart').getContext('2d');
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: scores.map(s => s.axis),
+                    datasets: [{
+                        label: 'Punteggio VALIDATR™',
+                        data: scores.map(s => s.score),
+                        backgroundColor: 'hsla(212, 100%, 45%, 0.2)',
+                        borderColor: 'hsl(212, 100%, 45%)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'hsl(212, 100%, 45%)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'hsl(212, 100%, 45%)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: { color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' },
+                            grid: { color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' },
+                            pointLabels: {
+                                color: isDarkMode ? 'hsl(var(--foreground))' : 'hsl(var(--foreground))',
+                                font: {
+                                    family: "'Inter', sans-serif",
+                                    size: 12
+                                }
+                            },
+                            ticks: {
+                                color: isDarkMode ? 'hsl(var(--foreground))' : 'hsl(var(--foreground))',
+                                backdropColor: 'transparent',
+                                stepSize: 25
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+        
+        /**
+         * Inizializza il Bubble Chart dei competitor con Plotly.js.
+         */
+        function initBubbleChart(competitors) {
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            const traces = competitors.map(c => ({
+                x: [c.moat],
+                y: [c.traction],
+                text: [c.name],
+                mode: 'markers+text',
+                textposition: 'top center',
+                marker: {
+                    size: [c.tam / 10], // Scala la dimensione per la visualizzazione
+                    sizemode: 'diameter',
+                    color: `hsl(${c.moat * 12}, 70%, 50%)`,
+                    opacity: 0.7
+                },
+                name: c.name
+            }));
+
+            const layout = {
+                title: 'Mappa Competitiva',
+                xaxis: { title: 'Moat (Vantaggio Competitivo)' },
+                yaxis: { title: 'Traction (Adozione di Mercato)' },
+                showlegend: false,
+                margin: { t: 40, b: 40, l: 40, r: 20 },
+                paper_bgcolor: isDarkMode ? 'hsl(var(--card))' : 'hsl(var(--card))',
+                plot_bgcolor: isDarkMode ? 'hsl(var(--card))' : 'hsl(var(--card))',
+                font: {
+                    color: isDarkMode ? 'hsl(var(--foreground))' : 'hsl(var(--foreground))',
+                    family: "'Inter', sans-serif"
+                }
+            };
+
+            Plotly.newPlot('competitor-bubble-chart', traces, layout, {responsive: true});
+        }
+
+
+        // Funzione principale per popolare la pagina
+        function populateMemorandum(data) {
+            // Sezione 4
+            renderQuantitativeTable(data.quantitative_analysis.scores);
+            initRadarChart(data.quantitative_analysis.scores);
+            
+            // Sezione 3
+            initBubbleChart(data.competitive_positioning.competitors);
+            document.getElementById('competitor-text').textContent = data.competitive_positioning.analysis_text;
+            
+            // ... qui andrà il codice per popolare le altre sezioni
+        }
+
+        // Avvia il popolamento della pagina quando il DOM è pronto
+        document.addEventListener('DOMContentLoaded', () => {
+            populateMemorandum(mockData);
+        });
+    </script>
+</body>
+
+</html>
