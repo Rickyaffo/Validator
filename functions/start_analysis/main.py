@@ -6,7 +6,6 @@ import openai
 import os
 from google.cloud import storage
 from google.api_core.exceptions import NotFound
-from google.cloud import bigquery
 import vertexai
 from vertexai.generative_models import GenerativeModel
 import firebase_admin
@@ -27,7 +26,7 @@ if not firebase_admin._apps:
         print(f"Errore nell'inizializzazione di Firebase Admin SDK: {e}")
 
 db = firestore.client()
-bq_client = bigquery.Client()
+
 APP_ID = os.environ.get('CANVAS_APP_ID', 'validatr-mvp')
 UID_excluded = os.environ.get("UID_excluded")
 openai.api_key = os.environ.get("OPENAI_API_KEY")

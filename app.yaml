@@ -1,5 +1,9 @@
 # app.yaml
-runtime: python39 # Usiamo un runtime python per flessibilità, ma servirà file statici
+runtime: python39
+
+# Aggiungi questa sezione per gestire lo scaling e risolvere il warning
+automatic_scaling:
+  max_instances: 2 # Inizia con un numero basso per controllare i costi
 
 handlers:
 # Gestisce tutti i file nella cartella frontend
